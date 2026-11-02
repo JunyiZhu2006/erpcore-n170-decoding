@@ -29,6 +29,9 @@ ELEC_FILE = RAW_FILE.with_name('sub-001_task-N170_electrodes.tsv')
 # Head outline for topomaps: the dataset's electrodes sit on an 85 mm sphere
 # centred at the origin, so electrodes at z = 0 (FP1/FP2, O1/O2) fall on it
 SPHERE = (0, 0, 0, 0.085)
+# N170 measurement window used by ERP CORE (Kappenman et al., 2021), fixed in
+# advance rather than chosen from this subject's data
+N170_WIN = (0.110, 0.150)
 
 EOG_CHANNELS = ['HEOG_left', 'HEOG_right', 'VEOG_lower']
 BAD_CHANNELS = ['Oz']  # intermittent jumps up to ~1700 µV, low-frequency only
@@ -192,14 +195,19 @@ for ch in ['FP1', 'FP2']:
     b = blink_before.copy().pick(ch).data[0] * 1e6
     a = blink_after.copy().pick(ch).data[0] * 1e6
     print(f'  {ch} blink peak-to-peak: before {np.ptp(b):.1f} µV, after {np.ptp(a):.1f} µV')
-win = (erps['faces', 'before'].times >= 0.13) & (erps['faces', 'before'].times <= 0.2)
+t_erp = erps['faces', 'before'].times
+win = (t_erp >= N170_WIN[0]) & (t_erp <= N170_WIN[1])
 for ch in ['P7', 'P8', 'PO7', 'PO8']:
     vals = []
     for cond in ['faces', 'cars']:
         b = erps[cond, 'before'].copy().pick(ch).data[0] * 1e6
         a = erps[cond, 'after'].copy().pick(ch).data[0] * 1e6
-        vals.append(f'{cond} min {b[win].min():.2f} -> {a[win].min():.2f} µV '
+        vals.append(f'{cond} mean {b[win].mean():.2f} -> {a[win].mean():.2f} µV '
                     f'(r={np.corrcoef(b, a)[0, 1]:.3f})')
+    diff = {when: (erps['faces', when].copy().pick(ch).data[0]
+                   - erps['cars', when].copy().pick(ch).data[0])[win].mean() * 1e6
+            for when in ['before', 'after']}
+    vals.append(f'face-car {diff["before"]:.2f} -> {diff["after"]:.2f} µV')
     print(f'  {ch}: ' + '; '.join(vals))
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 3.5), sharey=True)
@@ -299,12 +307,23 @@ for ax, ch in zip(axes, ['P7', 'PO7', 'P8', 'PO8']):
                 lw=1.8 if 'scrambled' not in name else 1, label=name)
     ax.axvline(0, color='k', lw=0.5)
     ax.axhline(0, color='k', lw=0.5)
-    ax.axvspan(130, 200, color='0.9', zorder=0)
+    ax.axvspan(N170_WIN[0] * 1000, N170_WIN[1] * 1000, color='0.9', zorder=0)
     ax.set_title(ch)
     ax.set_xlabel('time (ms)')
 axes[0].set_ylabel('µV')
 axes[0].legend(fontsize=8)
-fig.suptitle('All epochs, no rejection yet (grey band = 130-200 ms)')
+fig.suptitle('All epochs, no rejection yet '
+             '(grey band = ERP CORE N170 window, 110-150 ms)')
+
+# N170 face effect in the ERP CORE window, per category and face - car
+t = epochs.times
+win = (t >= N170_WIN[0]) & (t <= N170_WIN[1])
+print('Mean amplitude 110-150 ms (µV):')
+for ch in ['P7', 'PO7', 'P8', 'PO8']:
+    m = {name: epochs[name].average(picks=ch).data[0][win].mean() * 1e6
+         for _, _, name in CATEGORIES}
+    print(f'  {ch}: ' + ', '.join(f'{k} {v:.2f}' for k, v in m.items())
+          + f'; face-car {m["face"] - m["car"]:.2f}')
 fig.tight_layout()
 fig.savefig(FIGS / 'step2_epochs_erp_by_category.png', dpi=100)
 plt.close('all')

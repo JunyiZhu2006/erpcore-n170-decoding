@@ -2,7 +2,9 @@
 
 4.1 Downsample the clean epochs from step 2 to 100 Hz
 4.2 X (trials x 30 scalp electrodes x time points) and y (face 1, car 0)
-4.3 Balance the classes: draw 48 of the 60 faces at random
+4.3 Outer loop: draw 48 of the 60 faces at random, 20 times
+4.4 Inner loop: per draw, shuffle within each class and average every 4
+    trials into a trace (12 per class); regroup 100 times
 """
 from pathlib import Path
 
@@ -17,6 +19,10 @@ DATA = ROOT / 'data'
 DECODE_SFREQ = 100
 # Seed for every random draw in step 4, so results are reproducible
 RANDOM_SEED = 42
+# Repetitions, fixed in advance (see notes.md): 20 face draws x 100 groupings
+N_FACE_DRAWS = 20
+N_GROUPINGS = 100
+TRIALS_PER_TRACE = 4
 
 # --- 4.1 Downsample to 100 Hz ------------------------------------------------
 epochs = mne.read_epochs(DATA / 'step2_clean-epo.fif')
@@ -63,25 +69,69 @@ print(f'Channels ({len(fc.ch_names)}): {", ".join(fc.ch_names)}')
 eog_in_x = [ch for ch in fc.ch_names if 'EOG' in ch]
 print(f'EOG channels in X: {eog_in_x if eog_in_x else "none"}')
 
-# --- 4.3 Same number of trials in both classes ------------------------------
-# 60 faces vs 48 cars: draw 48 faces at random so that chance is exactly 50%
-# and the classifier is not pushed towards the bigger class. Fixed seed so
-# the draw is the same every run.
-rng = np.random.default_rng(RANDOM_SEED)
+# --- 4.3 Outer loop: draw 48 of the 60 faces, 20 times -----------------------
+# --- 4.4 Inner loop: group into traces of 4 trials, 100 times per draw -------
+# Only indices into X are stored here (which faces each draw keeps, which
+# trials go into each trace); the traces themselves are averaged on the fly
+# when decoding, since 2000 sets of traces would take ~1 GB.
+# Each draw gets its own random stream spawned from RANDOM_SEED, so every
+# draw is reproducible on its own, whatever order (or process) runs it in.
+
+
+def draw_faces(rng, face_idx, n):
+    """Pick n of the face trials at random, without replacement."""
+    return np.sort(rng.choice(face_idx, size=n, replace=False))
+
+
+def group_into_traces(rng, idx, per_trace):
+    """Shuffle trials of one class and cut them into groups of per_trace."""
+    return rng.permutation(idx).reshape(-1, per_trace)
+
+
 face_idx = np.where(y == 1)[0]
 car_idx = np.where(y == 0)[0]
-n_per_class = min(len(face_idx), len(car_idx))
-face_keep = np.sort(rng.choice(face_idx, size=n_per_class, replace=False))
-keep = np.sort(np.r_[face_keep, car_idx[:n_per_class]])
-X_bal, y_bal = X[keep], y[keep]
-np.savez(DATA / f'step4_balanced_{DECODE_SFREQ}hz.npz', X=X_bal, y=y_bal,
-         times=fc.times, ch_names=np.array(fc.ch_names),
-         sample=fc.events[keep, 0], kept_from_Xy=keep)
-print(f'Saved: data/step4_balanced_{DECODE_SFREQ}hz.npz')
-print(f'Balanced: X {X_bal.shape}, face {int((y_bal == 1).sum())}, '
-      f'car {int((y_bal == 0).sum())} (seed {RANDOM_SEED})')
-dropped = np.setdiff1d(face_idx, face_keep)
-print(f'Faces left out ({len(dropped)}), index in X: {dropped.tolist()}')
-# events keep counting samples at the original 1024 Hz after resample()
-print('  their stimulus onsets (s): '
-      + ', '.join(f'{s / epochs.info["sfreq"]:.1f}' for s in fc.events[dropped, 0]))
+n_per_class = min(len(face_idx), len(car_idx))          # 48
+n_traces = n_per_class // TRIALS_PER_TRACE               # 12
+
+draw_seeds = np.random.SeedSequence(RANDOM_SEED).spawn(N_FACE_DRAWS)
+face_draws = np.empty((N_FACE_DRAWS, n_per_class), dtype=int)
+# groups[draw, grouping, class (0 = face, 1 = car), trace, trial in trace]
+groups = np.empty((N_FACE_DRAWS, N_GROUPINGS, 2, n_traces, TRIALS_PER_TRACE),
+                  dtype=int)
+for d, seed in enumerate(draw_seeds):
+    rng = np.random.default_rng(seed)
+    face_draws[d] = draw_faces(rng, face_idx, n_per_class)
+    for g in range(N_GROUPINGS):
+        groups[d, g, 0] = group_into_traces(rng, face_draws[d], TRIALS_PER_TRACE)
+        groups[d, g, 1] = group_into_traces(rng, car_idx, TRIALS_PER_TRACE)
+
+np.savez(DATA / f'step4_draws_{DECODE_SFREQ}hz.npz', face_draws=face_draws,
+         groups=groups, random_seed=RANDOM_SEED)
+print(f'Saved: data/step4_draws_{DECODE_SFREQ}hz.npz')
+print(f'{N_FACE_DRAWS} face draws x {N_GROUPINGS} groupings; each grouping: '
+      f'{n_traces} face traces + {n_traces} car traces of {TRIALS_PER_TRACE} trials')
+
+# Checks
+left_out = [np.setdiff1d(face_idx, fd) for fd in face_draws]
+print(f'Faces left out per draw: {[len(lo) for lo in left_out][0]} '
+      f'(draw 1: {left_out[0].tolist()})')
+print(f'Distinct face draws: {len({tuple(fd) for fd in face_draws})} of {N_FACE_DRAWS}')
+times_left_out = np.bincount(np.concatenate(left_out), minlength=len(y))[face_idx]
+print(f'How often each face is left out over the 20 draws: '
+      f'min {times_left_out.min()}, max {times_left_out.max()}, '
+      f'mean {times_left_out.mean():.1f}')
+ok_cover = all(np.array_equal(np.sort(groups[d, g, 0].ravel()), face_draws[d])
+               and np.array_equal(np.sort(groups[d, g, 1].ravel()), car_idx)
+               for d in range(N_FACE_DRAWS) for g in range(N_GROUPINGS))
+print(f'Every grouping uses each drawn trial exactly once: {ok_cover}')
+ok_class = (y[groups[:, :, 0]] == 1).all() and (y[groups[:, :, 1]] == 0).all()
+print(f'Traces only mix trials of one class: {ok_class}')
+n_distinct = len({groups[d, g].tobytes() for d in range(N_FACE_DRAWS)
+                  for g in range(N_GROUPINGS)})
+print(f'Distinct groupings: {n_distinct} of {N_FACE_DRAWS * N_GROUPINGS}')
+
+# Example: the traces of draw 1, grouping 1
+traces_face = X[groups[0, 0, 0]].mean(axis=1)
+traces_car = X[groups[0, 0, 1]].mean(axis=1)
+print(f'Example traces (draw 1, grouping 1): face {traces_face.shape}, '
+      f'car {traces_car.shape} (traces x channels x time points)')

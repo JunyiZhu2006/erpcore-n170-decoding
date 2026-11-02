@@ -1,6 +1,7 @@
 """Step 4: time-resolved decoding of faces vs cars, ERP CORE N170, sub-001.
 
 4.1 Downsample the clean epochs from step 2 to 100 Hz
+4.2 X (trials x 30 scalp electrodes x time points) and y (face 1, car 0)
 """
 from pathlib import Path
 
@@ -38,3 +39,21 @@ for name in ['face', 'car']:
         r = np.corrcoef(hi_at_lo, lo.data[0])[0, 1]
         dmax = np.abs(hi_at_lo - lo.data[0]).max() * 1e6
         print(f'  {name} {ch}: r = {r:.4f}, max difference {dmax:.2f} µV')
+
+# --- 4.2 X and y -------------------------------------------------------------
+# X: trials x 30 scalp electrodes x time points; y: face = 1, car = 0.
+# EOG channels are left out, so the classifier cannot separate the classes
+# by eye movements instead of brain activity.
+fc = epochs_ds[['face', 'car']].copy().pick('eeg')
+X = fc.get_data()
+code_to_tag = {code: tag for tag, code in fc.event_id.items()}
+y = np.array([1 if code_to_tag[code].startswith('face/') else 0
+              for code in fc.events[:, 2]])
+np.savez(DATA / f'step4_Xy_{DECODE_SFREQ}hz.npz', X=X, y=y, times=fc.times,
+         ch_names=np.array(fc.ch_names), sample=fc.events[:, 0])
+print(f'Saved: data/step4_Xy_{DECODE_SFREQ}hz.npz')
+print(f'X: {X.shape} (trials x channels x time points), y: {y.shape}, '
+      f'face (1) {int((y == 1).sum())}, car (0) {int((y == 0).sum())}')
+print(f'Channels ({len(fc.ch_names)}): {", ".join(fc.ch_names)}')
+eog_in_x = [ch for ch in fc.ch_names if 'EOG' in ch]
+print(f'EOG channels in X: {eog_in_x if eog_in_x else "none"}')

@@ -7,6 +7,7 @@
 2.3.1 High-pass filter at 0.1 Hz
 2.3.2 Low-pass filter at 30 Hz
 2.3.3a ICA on a 1 Hz high-passed copy; find EOG component candidates
+2.3.3b Remove the EOG components (ICA000, ICA003) from the 0.1-30 Hz data
 """
 from pathlib import Path
 
@@ -148,4 +149,83 @@ for ax, (name, y) in zip(np.atleast_1d(axes), rows):
 np.atleast_1d(axes)[-1].set_xlabel('time (s)')
 fig.tight_layout()
 fig.savefig(FIGS / 'step2_ica_sources_vs_eog.png', dpi=100)
+plt.close('all')
+
+# --- 2.3.3b ICA: remove the EOG components from the 0.1-30 Hz data ----------
+# Confirmed by eye (topomaps, time courses, step2_check_ica003.py):
+# ICA000 = blinks, ICA003 = horizontal eye movements. All other components
+# are kept, including ICA010 (bilateral P9/P10, the N170 face effect).
+ica.exclude = [0, 3]
+raw_clean = ica.apply(raw.copy())
+# Only the 29 ICA channels change; EOG channels keep the uncorrected signal,
+# which is what epoch rejection must look at later. Oz (bad) is untouched.
+save(raw_clean, 'step2_ica-raw.fif')
+
+# Check 1: blink-locked average at FP1/FP2 before vs after
+blinks = mne.preprocessing.find_eog_events(raw, ch_name='VEOG')
+blink_before = mne.Epochs(raw, blinks, tmin=-0.5, tmax=0.5, baseline=(-0.5, -0.3),
+                          picks=['FP1', 'FP2'], preload=True).average()
+blink_after = mne.Epochs(raw_clean, blinks, tmin=-0.5, tmax=0.5,
+                         baseline=(-0.5, -0.3), picks=['FP1', 'FP2'],
+                         preload=True).average()
+
+# Check 2: stimulus-locked ERP at the N170 sites before vs after
+annot_events, annot_ids = mne.events_from_annotations(raw)
+faces = [v for k, v in annot_ids.items() if 1 <= int(k) <= 40]
+cars = [v for k, v in annot_ids.items() if 41 <= int(k) <= 80]
+
+
+def erp(r, ids):
+    ev = annot_events[np.isin(annot_events[:, 2], ids)]
+    return mne.Epochs(r, ev, tmin=-0.2, tmax=0.8, baseline=(-0.2, 0),
+                      picks=['P7', 'P8', 'PO7', 'PO8'], preload=True).average()
+
+
+erps = {(cond, when): erp(r, ids)
+        for cond, ids in [('faces', faces), ('cars', cars)]
+        for when, r in [('before', raw), ('after', raw_clean)]}
+
+print(f'Blinks found in VEOG: {len(blinks)}')
+for ch in ['FP1', 'FP2']:
+    b = blink_before.copy().pick(ch).data[0] * 1e6
+    a = blink_after.copy().pick(ch).data[0] * 1e6
+    print(f'  {ch} blink peak-to-peak: before {np.ptp(b):.1f} µV, after {np.ptp(a):.1f} µV')
+win = (erps['faces', 'before'].times >= 0.13) & (erps['faces', 'before'].times <= 0.2)
+for ch in ['P7', 'P8', 'PO7', 'PO8']:
+    vals = []
+    for cond in ['faces', 'cars']:
+        b = erps[cond, 'before'].copy().pick(ch).data[0] * 1e6
+        a = erps[cond, 'after'].copy().pick(ch).data[0] * 1e6
+        vals.append(f'{cond} min {b[win].min():.2f} -> {a[win].min():.2f} µV '
+                    f'(r={np.corrcoef(b, a)[0, 1]:.3f})')
+    print(f'  {ch}: ' + '; '.join(vals))
+
+fig, axes = plt.subplots(1, 2, figsize=(11, 3.5), sharey=True)
+for ax, ch in zip(axes, ['FP1', 'FP2']):
+    t = blink_before.times * 1000
+    ax.plot(t, blink_before.copy().pick(ch).data[0] * 1e6, color='#8b98a3', label='before ICA')
+    ax.plot(t, blink_after.copy().pick(ch).data[0] * 1e6, color='#6a4dd6', label='after ICA')
+    ax.set_title(f'{ch}, average of {len(blinks)} blinks')
+    ax.set_xlabel('time from blink peak (ms)')
+axes[0].set_ylabel('µV')
+axes[0].legend()
+fig.tight_layout()
+fig.savefig(FIGS / 'step2_ica_blinks_before_after.png', dpi=100)
+
+fig, axes = plt.subplots(1, 4, figsize=(15, 3.5), sharey=True)
+for ax, ch in zip(axes, ['P7', 'PO7', 'P8', 'PO8']):
+    for cond, col in [('faces', '#c2385a'), ('cars', '#1c8cc6')]:
+        t = erps[cond, 'before'].times * 1000
+        ax.plot(t, erps[cond, 'before'].copy().pick(ch).data[0] * 1e6, color=col,
+                lw=2.5, alpha=0.35, label=f'{cond} before')
+        ax.plot(t, erps[cond, 'after'].copy().pick(ch).data[0] * 1e6, color=col,
+                lw=1, label=f'{cond} after')
+    ax.axvline(0, color='k', lw=0.5)
+    ax.axhline(0, color='k', lw=0.5)
+    ax.set_title(ch)
+    ax.set_xlabel('time (ms)')
+axes[0].set_ylabel('µV')
+axes[0].legend(fontsize=8)
+fig.tight_layout()
+fig.savefig(FIGS / 'step2_ica_erp_before_after.png', dpi=100)
 plt.close('all')

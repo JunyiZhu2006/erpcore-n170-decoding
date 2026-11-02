@@ -6,6 +6,7 @@
 3.3 At PO7 and PO8: face, car and the face - car difference wave
 3.4 Mean of the difference wave over 110-150 ms, with a 95% CI band
 3.5 Topography: face - car in 110-150 ms at every electrode
+3.6 Redo with the low-pass at 30 Hz, 40 Hz and none; compare PO8
 """
 from pathlib import Path
 
@@ -14,6 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / 'data'
@@ -115,4 +117,63 @@ im, _ = mne.viz.plot_topomap(topo, diff.info, axes=ax, sphere=SPHERE,
 fig.colorbar(im, ax=ax, shrink=0.7, label='face - car (µV)')
 ax.set_title('Face - car, 110-150 ms')
 fig.savefig(FIGS / 'step3_topo_diff.png', dpi=100, bbox_inches='tight')
+plt.close('all')
+
+# --- 3.6 Same analysis with a different low-pass -----------------------------
+# Redo step 2 from the 0.1 Hz high-passed data with the low-pass at 30 Hz,
+# 40 Hz, or none. Everything else stays the same: the same ICA solution and
+# excluded components, Oz interpolation, average reference, epochs, and the
+# same rejected trials (taken from step 2's log, not re-decided).
+ica = mne.preprocessing.read_ica(DATA / 'step2_ica-ica.fif')
+ica.exclude = [0, 3]   # as confirmed in step 2 (ICA_EOG_CONFIRMED)
+reject_log = pd.read_csv(DATA / 'step2_reject_log.csv', index_col='epoch')
+raw_hp = mne.io.read_raw_fif(DATA / 'step2_hp-raw.fif', preload=True)
+filter_picks = mne.pick_types(raw_hp.info, eeg=True, eog=True, exclude=[])
+LOWPASS = {'30 Hz': 30, '40 Hz': 40, 'no low-pass': None}
+
+diff_po8 = {}
+for label, h_freq in LOWPASS.items():
+    raw_v = raw_hp.copy()
+    if h_freq is not None:
+        raw_v.filter(l_freq=None, h_freq=h_freq, picks=filter_picks)
+    raw_v = ica.apply(raw_v)
+    raw_v.interpolate_bads(reset_bads=True, origin=(0.0, 0.0, 0.0))
+    raw_v.set_eeg_reference('average', projection=False)
+    ev, ids = mne.events_from_annotations(raw_v)
+    stim_id = {f'{name}/{d}': c for d, c in ids.items()
+               for lo, hi, name in [(1, 40, 'face'), (41, 80, 'car'),
+                                    (101, 140, 'scrambled_face'),
+                                    (141, 180, 'scrambled_car')]
+               if lo <= int(d) <= hi}
+    ep_v = mne.Epochs(raw_v, ev, event_id=stim_id, tmin=-0.2, tmax=0.8,
+                      baseline=(-0.2, 0), picks=['eeg', 'eog'], reject=None,
+                      preload=True)
+    ep_v.drop(np.where(reject_log.rejected.to_numpy())[0], reason='STEP2_LOG')
+    if h_freq == 30:
+        # The 30 Hz version must reproduce step 2's clean epochs. Not bit for
+        # bit: step2_hp-raw.fif is stored as float32, while step 2 kept going
+        # in float64 (differences ~0.00003 µV), hence the 0.001 µV tolerance
+        assert np.allclose(ep_v.get_data(), epochs.get_data(), rtol=0,
+                           atol=1e-9), '30 Hz redo does not match step2_clean-epo.fif'
+    d_v = mne.combine_evoked([ep_v['face'].average(picks='eeg'),
+                              ep_v['car'].average(picks='eeg')], weights=[1, -1])
+    diff_po8[label] = d_v.copy().pick('PO8').data[0] * 1e6
+    print(f'{label}: {len(ep_v["face"])} face, {len(ep_v["car"])} car trials')
+
+print('PO8 face - car, mean over 110-150 ms (µV):')
+fig, ax = plt.subplots(figsize=(9, 4.5))
+for (label, d), col in zip(diff_po8.items(), ['k', '#c9690c', '#6a4dd6']):
+    print(f'  {label}: {d[win].mean():.2f}')
+    ax.plot(t * 1000, d, color=col, lw=1.8 if label == '30 Hz' else 1.1,
+            label=f'{label}: {d[win].mean():.2f} µV in 110-150 ms')
+ax.axvspan(N170_WIN[0] * 1000, N170_WIN[1] * 1000, color='#f2d98c',
+           alpha=0.5, zorder=0)
+ax.axvline(0, color='k', lw=0.5)
+ax.axhline(0, color='k', lw=0.5)
+ax.set_xlabel('time (ms)')
+ax.set_ylabel('face - car (µV)')
+ax.set_title('PO8 difference wave with three low-pass settings')
+ax.legend(fontsize=9, loc='upper left')
+fig.tight_layout()
+fig.savefig(FIGS / 'step3_filter_PO8.png', dpi=100)
 plt.close('all')

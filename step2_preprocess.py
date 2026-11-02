@@ -4,6 +4,7 @@
     compute bipolar EOG: HEOG = HEOG_left - HEOG_right, VEOG = VEOG_lower - FP2
 2.2 Average reference over the 30 scalp EEG channels (EOG excluded)
 2.3.1 High-pass filter at 0.1 Hz
+2.3.2 Low-pass filter at 30 Hz
 """
 from pathlib import Path
 
@@ -56,3 +57,10 @@ save(raw, 'step2_avgref-raw.fif')
 # and epoch rejection later.
 raw.filter(l_freq=0.1, h_freq=None, picks=['eeg', 'eog'])
 save(raw, 'step2_hp-raw.fif')
+
+# --- 2.3.2 Low-pass 30 Hz ----------------------------------------------------
+# Removes 60 Hz line noise and part of the muscle activity; also needed
+# before downsampling to 100 Hz later (Nyquist 50 Hz). MNE default FIR:
+# 7.5 Hz transition band (-6 dB at 33.75 Hz), ~0.44 s kernel.
+raw.filter(l_freq=None, h_freq=30, picks=['eeg', 'eog'])
+save(raw, 'step2_lp-raw.fif')

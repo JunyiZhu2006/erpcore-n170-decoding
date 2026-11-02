@@ -93,3 +93,14 @@
 - 110–150 ms 平均（µV，ERP CORE 窗口）：P7 face 1.37 / car 2.67（差 −1.30）；PO7 3.58 / 4.33（差 −0.75）；P8 3.01 / 2.86（差 +0.15）；PO8 3.83 / 4.72（差 −0.89）
 - 本被试脸−车差异最负的时刻：P7 171 ms（−5.03），PO7 145 ms（−2.47），P8 149 ms（−3.42），PO8 146 ms（−4.51 µV），大多落在窗口末端，所以 110–150 ms 的平均值偏小；还没剔除，先不下结论
 - 给剔除做参考：每个 epoch 最大通道峰峰值 中位 119 / 90% 179 / 99% 280 / 最大 447 µV；VEOG 峰峰值 中位 97 / 90% 318 / 最大 543；HEOG 中位 42 / 90% 79 / 最大 175
+
+### 2.5 剔除 epoch（每个都记下原因）
+- 每个 epoch 对所有规则都检查一遍，可以同时有多个原因；明细在 data/step2_reject_log.csv（320 行），被剔除的 epoch 在 step2_clean-epo.fif 的 drop_log 里带着原因；data/step2_epochs-epo.fif 现在带 metadata（全部 320 个）
+- 原因代码：EEG_AMPLITUDE 头皮电压过大；BLINK 刺激期间眨眼；SACCADE 刺激期间眼动；NO_RESPONSE 没按键；WRONG 答错（202）；RT_FAST 反应时 < 200 ms；RT_SLOW 反应时 > 1000 ms
+- 2.5.1 EEG_AMPLITUDE：每个通道整段 epoch 的峰峰值，超过该通道自己的"均值 + 3 SD"（各通道上限 45–254 µV）→ 20 个；集中在 230、424–428、447、556 s 等头动段
+- 2.5.2a BLINK：刺激呈现的 0–300 ms 内 VEOG（ICA 前）峰峰值 > 本被试眨眼中位大小的一半（连续数据检出 152 次眨眼，中位 341 µV → 阈值 170 µV）→ 2 个（411 s、415 s）；没有一次眨眼峰落在 0–300 ms 内，这 2 个是眨眼的起止边缘
+- 2.5.2b SACCADE：0–300 ms 内 HEOG（ICA 前）阶跃（后 200 ms 均值 − 前 200 ms 均值）> 32 µV（约 2°，按约 16 µV/度）→ 10 个；其中 6 个同时答错
+- 2.5.3 行为：每个刺激配它后面紧跟的那个反应；答错 74、无反应 2、< 200 ms 4、> 1000 ms 2
+- 各类正确率：car 0.69、face 0.79、scrambled_car 0.78、scrambled_face 0.82
+- 合计剔除 95 / 320，保留 225：face 60、car 48、scrambled_face 60、scrambled_car 57；只因答错被剔除的有 59 个
+- 输出：data/step2_reject_log.csv、data/step2_clean-epo.fif

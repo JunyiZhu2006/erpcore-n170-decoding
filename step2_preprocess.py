@@ -10,6 +10,8 @@
 2.3.3b Remove the EOG components (ICA000, ICA003) from the 0.1-30 Hz data
 2.3.4 Interpolate Oz, re-reference to the average of all 30 scalp channels
 2.4 Epochs from -200 to 800 ms around each stimulus, baseline -200..0 ms
+2.5 Reject epochs (EEG amplitude, blinks / eye movements during the stimulus,
+    behaviour), recording the reason(s) for every rejected epoch
 """
 from pathlib import Path
 
@@ -26,6 +28,13 @@ FIGS = ROOT / 'figs'
 RAW_FILE = (DATA / 'step1_erpcore_N170' / 'erpcore' / 'N170'
             / 'sub-001' / 'eeg' / 'sub-001_task-N170_eeg.set')
 ELEC_FILE = RAW_FILE.with_name('sub-001_task-N170_electrodes.tsv')
+EVENTS_FILE = RAW_FILE.with_name('sub-001_task-N170_events.tsv')
+
+# Epoch rejection (2.5)
+STIM_DURATION = 0.3          # s the image stays on screen (events.tsv duration)
+EEG_Z_THRESHOLD = 3.0        # per-channel peak-to-peak, mean + 3 SD
+HEOG_STEP_THRESHOLD = 32.0   # µV, about 2 degrees of gaze
+RT_RANGE_MS = (200, 1000)    # ERP CORE behavioural limits
 # Head outline for topomaps: the dataset's electrodes sit on an 85 mm sphere
 # centred at the origin, so electrodes at z = 0 (FP1/FP2, O1/O2) fall on it
 SPHERE = (0, 0, 0, 0.085)
@@ -327,3 +336,101 @@ for ch in ['P7', 'PO7', 'P8', 'PO8']:
 fig.tight_layout()
 fig.savefig(FIGS / 'step2_epochs_erp_by_category.png', dpi=100)
 plt.close('all')
+
+# --- 2.5 Reject epochs, recording every reason ------------------------------
+# Each epoch is checked against all rules; an epoch can fail several. All
+# measures and flags go into epochs.metadata and data/step2_reject_log.csv,
+# and each dropped epoch carries its reasons in epochs.drop_log.
+t = epochs.times
+sf = epochs.info['sfreq']
+in_stim = (t >= 0) & (t <= STIM_DURATION)
+log = pd.DataFrame({
+    'onset_s': epochs.events[:, 0] / sf,
+    'code': [int(k.split('/')[1]) for k in
+             [{v: k for k, v in epochs.event_id.items()}[e] for e in epochs.events[:, 2]]],
+})
+log['category'] = [name for c in log.code for lo, hi, name in CATEGORIES if lo <= c <= hi]
+
+# 2.5.1 Scalp EEG amplitude: peak-to-peak of each channel over the whole
+# epoch; an epoch fails if any channel exceeds that channel's own
+# mean + 3 SD across epochs (3 SD is the strictest allowed).
+eeg_names = epochs.copy().pick('eeg').ch_names
+ptp = np.ptp(epochs.get_data(picks='eeg'), axis=2) * 1e6       # epochs x channels
+z = (ptp - ptp.mean(0)) / ptp.std(0)
+log['eeg_max_z'] = z.max(1)
+log['eeg_worst_ch'] = [eeg_names[i] for i in z.argmax(1)]
+log['eeg_worst_ptp_uv'] = ptp[np.arange(len(ptp)), z.argmax(1)]
+log['EEG_AMPLITUDE'] = log.eeg_max_z > EEG_Z_THRESHOLD
+
+# 2.5.2a Blinks during the stimulus: VEOG (uncorrected) peak-to-peak within
+# the 300 ms the image is on screen, against half of this subject's median
+# blink size (blinks found in the continuous VEOG).
+blink_events = mne.preprocessing.find_eog_events(raw_clean, ch_name='VEOG')
+veog_cont = raw_clean.get_data(picks='VEOG')[0] * 1e6
+half_win = int(0.25 * sf)
+blink_size = np.median([np.ptp(veog_cont[max(s - half_win, 0):s + half_win])
+                        for s in blink_events[:, 0]])
+veog_threshold = blink_size / 2
+veog = epochs.get_data(picks='VEOG')[:, 0] * 1e6
+log['veog_ptp_stim_uv'] = np.ptp(veog[:, in_stim], axis=1)
+log['BLINK'] = log.veog_ptp_stim_uv > veog_threshold
+
+# 2.5.2b Eye movements during the stimulus: step in HEOG (uncorrected),
+# mean of the 200 ms after minus the 200 ms before, for every centre point
+# within the stimulus period. 32 µV is about 2 degrees of gaze (~16 µV/deg).
+heog = epochs.get_data(picks='HEOG')[:, 0] * 1e6
+step_half = int(0.2 * sf)
+steps = np.array([heog[:, i:i + step_half].mean(1) - heog[:, i - step_half:i].mean(1)
+                  for i in np.where(in_stim)[0]])
+log['heog_step_stim_uv'] = np.abs(steps).max(0)
+log['SACCADE'] = log.heog_step_stim_uv > HEOG_STEP_THRESHOLD
+
+# 2.5.3 Behaviour: the response is the first response event after the
+# stimulus and before the next one (events.tsv; codes 201 correct, 202 error)
+beh = pd.read_csv(EVENTS_FILE, sep='\t')
+beh_rows = beh[['sample', 'trial_type', 'value']].to_numpy()
+resp_by_sample = {}
+for k, (sample, ttype, value) in enumerate(beh_rows):
+    if ttype != 'stimulus':
+        continue
+    resp, rt = np.nan, np.nan
+    if k + 1 < len(beh_rows) and beh_rows[k + 1][1] == 'response':
+        resp = int(beh_rows[k + 1][2])
+        rt = (beh_rows[k + 1][0] - sample) / sf * 1000
+    resp_by_sample[int(sample)] = (resp, rt)
+# events.tsv samples are 1-based; MNE's are 0-based
+log['response'], log['rt_ms'] = zip(*[resp_by_sample[s + 1] for s in epochs.events[:, 0]])
+log['NO_RESPONSE'] = log.response.isna()
+log['WRONG'] = log.response == 202
+log['RT_FAST'] = log.rt_ms < RT_RANGE_MS[0]
+log['RT_SLOW'] = log.rt_ms > RT_RANGE_MS[1]
+
+REASONS = ['EEG_AMPLITUDE', 'BLINK', 'SACCADE', 'NO_RESPONSE', 'WRONG',
+           'RT_FAST', 'RT_SLOW']
+log['reasons'] = log[REASONS].apply(lambda r: ';'.join(c for c in REASONS if r[c]), axis=1)
+log['rejected'] = log.reasons != ''
+log.index.name = 'epoch'
+log.to_csv(DATA / 'step2_reject_log.csv', float_format='%.2f')
+print(f'Saved: data/step2_reject_log.csv')
+
+epochs.metadata = log
+epochs.save(DATA / 'step2_epochs-epo.fif', overwrite=True)  # all 320, with metadata
+
+# Drop from the highest index down so the remaining indices stay valid
+clean = epochs.copy()
+for i in log.index[log.rejected][::-1]:
+    clean.drop([i], reason=tuple(log.reasons[i].split(';')))
+clean.save(DATA / 'step2_clean-epo.fif', overwrite=True)
+print(f'Saved: data/step2_clean-epo.fif')
+
+print(f'EEG z threshold {EEG_Z_THRESHOLD} -> per-channel ptp limits '
+      f'{(ptp.mean(0) + EEG_Z_THRESHOLD * ptp.std(0)).min():.0f}-'
+      f'{(ptp.mean(0) + EEG_Z_THRESHOLD * ptp.std(0)).max():.0f} µV')
+print(f'Blinks in continuous VEOG: {len(blink_events)}, median size '
+      f'{blink_size:.0f} µV -> VEOG threshold {veog_threshold:.0f} µV')
+print('Epochs failing each rule (an epoch can fail several):')
+for r in REASONS:
+    print(f'  {r}: {log[r].sum()}')
+print(f'Rejected: {log.rejected.sum()} of {len(log)}; kept {len(clean)}')
+print(log.groupby('category').rejected.agg(['sum', 'count'])
+      .assign(kept=lambda d: d['count'] - d['sum']))

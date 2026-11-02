@@ -1,5 +1,5 @@
-"""Step 4 shared settings and functions (used by step4_decoding.py and
-step4_run.py; the permutation test will use the same two functions).
+"""Step 4 shared settings and functions (used by step4_decoding.py,
+step4_run.py and step5_permutation.py).
 
 make_groups:  labels -> which trials form which face / car trace
 decode_curve: those groups -> accuracy at every time point
@@ -38,6 +38,29 @@ N170_WIN = (0.110, 0.150)
 def main_seeds():
     """One independent random stream per face draw of the main analysis."""
     return np.random.SeedSequence(RANDOM_SEED).spawn(N_FACE_DRAWS)
+
+
+# The permutation test gets its own random source, separate from main_seeds:
+# entropy [RANDOM_SEED, 1] instead of RANDOM_SEED
+PERM_SEED_TAG = 1
+
+
+def permutation_seeds(perm):
+    """Random streams for permutation number perm (0-based).
+
+    Returns (shuffle_seed, draw_seeds): one stream to shuffle the trial
+    labels, and one per face draw for make_groups. Each permutation, and each
+    draw within it, can be recomputed on its own.
+    """
+    root = np.random.SeedSequence([RANDOM_SEED, PERM_SEED_TAG])
+    perm_seed = root.spawn(perm + 1)[perm]
+    shuffle_seed, groups_seed = perm_seed.spawn(2)
+    return shuffle_seed, groups_seed.spawn(N_FACE_DRAWS)
+
+
+def shuffle_labels(y, shuffle_seed):
+    """Trial-level permutation: same labels (60 faces, 48 cars), new order."""
+    return np.random.default_rng(shuffle_seed).permutation(y)
 
 
 def make_groups(y, seeds, n_groupings=N_GROUPINGS, per_trace=TRIALS_PER_TRACE):

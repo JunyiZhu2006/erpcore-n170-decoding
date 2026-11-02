@@ -196,7 +196,7 @@
 - 只存序号：data/step4_draws_100hz.npz（face_draws：20 × 48，每批保留的脸在 X 里的序号；groups：20 × 100 × 2 × 12 × 4，[批, 分组, 类别 0 = 脸 / 1 = 车, 第几条 trace, trace 里的 4 个 trial]），1.5 MB
 - trace 本身不存（2000 套 trace 约 1 GB），解码时用 X[groups].mean(axis=1) 现算，每类得到 12 × 30 × 100
 - 检查：每种分组正好把这批的 48 个脸、48 个车各用一次；每条 trace 只含同一类；重跑一遍生成的文件完全相同（可复现）
-- 抽脸和分组的代码已移到 step4_lib.py 的 make_groups(y, seeds)：输入标签、输出分组序号；置换检验用打乱的标签调用同一个函数（随机数消耗顺序没变，按理生成的分组和原来一样，但改完还没重跑核对）
+- 抽脸和分组的代码已移到 step4_lib.py 的 make_groups(y, seeds)：输入标签、输出分组序号；置换检验用打乱的标签调用同一个函数（随机数消耗顺序没变；已重跑核对：新生成的 step4_draws_100hz.npz 和改之前的逐个数组完全相同，文件 SHA256 也相同；step4_Xy_100hz.npz 也完全相同）
 
 ### 4.5–4.8 程序已写好，还没运行（step4_run.py）
 - 核心函数 decode_curve(X, face_groups, car_groups)（step4_lib.py）：只认分组序号，不看标签

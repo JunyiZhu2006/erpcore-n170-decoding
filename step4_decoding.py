@@ -5,24 +5,15 @@
 4.3 Outer loop: draw 48 of the 60 faces at random, 20 times
 4.4 Inner loop: per draw, shuffle within each class and average every 4
     trials into a trace (12 per class); regroup 100 times
-"""
-from pathlib import Path
 
+Decoding (4.5-4.8) is in step4_run.py; shared settings and functions are in
+step4_lib.py.
+"""
 import mne
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent
-DATA = ROOT / 'data'
-
-# Sampling rate for decoding. 100 Hz first for a quick pass; the data were
-# low-passed at 30 Hz in step 2, below the 50 Hz Nyquist limit, so no aliasing.
-DECODE_SFREQ = 100
-# Seed for every random draw in step 4, so results are reproducible
-RANDOM_SEED = 42
-# Repetitions, fixed in advance (see notes.md): 20 face draws x 100 groupings
-N_FACE_DRAWS = 20
-N_GROUPINGS = 100
-TRIALS_PER_TRACE = 4
+from step4_lib import (DATA, DECODE_SFREQ, N_FACE_DRAWS, N_GROUPINGS,
+                       RANDOM_SEED, TRIALS_PER_TRACE, main_seeds, make_groups)
 
 # --- 4.1 Downsample to 100 Hz ------------------------------------------------
 epochs = mne.read_epochs(DATA / 'step2_clean-epo.fif')
@@ -76,34 +67,13 @@ print(f'EOG channels in X: {eog_in_x if eog_in_x else "none"}')
 # when decoding, since 2000 sets of traces would take ~1 GB.
 # Each draw gets its own random stream spawned from RANDOM_SEED, so every
 # draw is reproducible on its own, whatever order (or process) runs it in.
-
-
-def draw_faces(rng, face_idx, n):
-    """Pick n of the face trials at random, without replacement."""
-    return np.sort(rng.choice(face_idx, size=n, replace=False))
-
-
-def group_into_traces(rng, idx, per_trace):
-    """Shuffle trials of one class and cut them into groups of per_trace."""
-    return rng.permutation(idx).reshape(-1, per_trace)
-
-
+# make_groups (step4_lib.py) is also what the permutation test calls, with
+# shuffled trial labels instead of y.
 face_idx = np.where(y == 1)[0]
 car_idx = np.where(y == 0)[0]
-n_per_class = min(len(face_idx), len(car_idx))          # 48
-n_traces = n_per_class // TRIALS_PER_TRACE               # 12
-
-draw_seeds = np.random.SeedSequence(RANDOM_SEED).spawn(N_FACE_DRAWS)
-face_draws = np.empty((N_FACE_DRAWS, n_per_class), dtype=int)
+face_draws, groups = make_groups(y, main_seeds())
 # groups[draw, grouping, class (0 = face, 1 = car), trace, trial in trace]
-groups = np.empty((N_FACE_DRAWS, N_GROUPINGS, 2, n_traces, TRIALS_PER_TRACE),
-                  dtype=int)
-for d, seed in enumerate(draw_seeds):
-    rng = np.random.default_rng(seed)
-    face_draws[d] = draw_faces(rng, face_idx, n_per_class)
-    for g in range(N_GROUPINGS):
-        groups[d, g, 0] = group_into_traces(rng, face_draws[d], TRIALS_PER_TRACE)
-        groups[d, g, 1] = group_into_traces(rng, car_idx, TRIALS_PER_TRACE)
+n_traces = groups.shape[3]
 
 np.savez(DATA / f'step4_draws_{DECODE_SFREQ}hz.npz', face_draws=face_draws,
          groups=groups, random_seed=RANDOM_SEED)

@@ -84,6 +84,13 @@ def main():
     i_peak = np.where(post)[0][mean_curve[post].argmax()]
     log(f'4.6 main result: {acc.shape[0] * acc.shape[1]} curves; peak accuracy '
         f'{mean_curve[i_peak]:.3f} at {t_ms[i_peak]:.0f} ms')
+    # Self-check: before the stimulus there is nothing to decode, so the
+    # main curve should sit around 0.5 there
+    pre = t_ms < 0
+    i_pre = np.where(pre)[0][mean_curve[pre].argmax()]
+    log(f'4.6 self-check, before stimulus (-200 to 0 ms, {pre.sum()} points): '
+        f'mean {mean_curve[pre].mean():.3f}, max {mean_curve[i_pre]:.3f} '
+        f'at {t_ms[i_pre]:.0f} ms (should be near 0.500)')
 
     # --- 4.7 Robustness: two kinds of random spread --------------------------
     # Within a draw: SD across its 100 groupings, averaged over the 20 draws.

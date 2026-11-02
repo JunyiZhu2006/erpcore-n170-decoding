@@ -27,12 +27,15 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from joblib import Parallel, delayed
+from mne.stats import fdr_correction
 
 from step4_lib import (DATA, DECODE_SFREQ, FIGS, N170_WIN, N_FACE_DRAWS,
                        decode_curve, keep_awake, make_groups,
                        permutation_seeds, shuffle_labels)
 
 N_PERM = 100
+# Multiple comparisons: FDR (Benjamini-Hochberg) over all 100 time points
+FDR_Q = 0.05
 RESULTS = DATA / f'step5_perm_{DECODE_SFREQ}hz'
 LOG = RESULTS / 'progress.log'
 
@@ -104,43 +107,57 @@ def summarise():
     # p at every time point: share of permutations at least as high as the
     # real curve, counting the real result itself (+1), uncorrected
     p_val = (1 + (null >= real_curve).sum(axis=0)) / (1 + n)
+    # FDR (Benjamini-Hochberg), q = 0.05, over all time points together,
+    # including the pre-stimulus ones: after correction none of those should
+    # be significant (self-check)
+    sig_fdr, p_fdr = fdr_correction(p_val, alpha=FDR_Q, method='indep')
+    null_mean = null.mean(axis=0)               # actual chance level of this pipeline
+    null_p95 = np.percentile(null, 95, axis=0)  # how high chance alone gets (one-sided)
     np.savez(DATA / f'step5_null_{DECODE_SFREQ}hz.npz', null=null, perms=np.array(perms),
-             real_curve=real_curve, p_val=p_val, times=times)
+             real_curve=real_curve, p_val=p_val, p_fdr=p_fdr, sig_fdr=sig_fdr,
+             null_mean=null_mean, null_p95=null_p95, times=times)
 
     pre, post = t_ms < 0, t_ms >= 0
     sig = p_val < 0.05
-    log(f'summary from {n} permutations (smallest possible p = {1 / (1 + n):.3f})')
-    log(f'  null mean curve: overall {null.mean():.3f}, before stimulus '
-        f'{null[:, pre].mean():.3f}, 400-790 ms {null[:, t_ms >= 400].mean():.3f}')
-    log(f'  self-check, before stimulus: {int(sig[pre].sum())} of {int(pre.sum())} '
-        f'points with p < 0.05 (uncorrected); smallest p {p_val[pre].min():.3f} '
-        f'at {t_ms[pre][p_val[pre].argmin()]:.0f} ms')
-    log(f'  after stimulus: {int(sig[post].sum())} of {int(post.sum())} points with '
-        f'p < 0.05 (uncorrected): '
+    log(f'summary from {n} permutations (smallest possible p = {1 / (1 + n):.4f})')
+    log(f'  null mean (actual chance level): overall {null_mean.mean():.3f}, before '
+        f'stimulus {null_mean[pre].mean():.3f}, 400-790 ms '
+        f'{null_mean[t_ms >= 400].mean():.3f}, range {null_mean.min():.3f}-'
+        f'{null_mean.max():.3f}')
+    log(f'  null 95th percentile: range {null_p95.min():.3f}-{null_p95.max():.3f}')
+    log(f'  self-check, before stimulus ({int(pre.sum())} points): FDR-significant '
+        f'{int(sig_fdr[pre].sum())} (should be 0); uncorrected p < 0.05 '
+        f'{int(sig[pre].sum())}; smallest p {p_val[pre].min():.4f} at '
+        f'{t_ms[pre][p_val[pre].argmin()]:.0f} ms')
+    log(f'  after stimulus, FDR-significant (q = {FDR_Q}, all {len(p_val)} points): '
+        + (', '.join(f'{x:.0f}' for x in t_ms[post & sig_fdr]) or 'none') + ' ms')
+    log(f'  after stimulus, uncorrected p < 0.05: '
         + (', '.join(f'{x:.0f}' for x in t_ms[post & sig]) or 'none') + ' ms')
     i_peak = np.where(post)[0][real_curve[post].argmax()]
     log(f'  real peak {real_curve[i_peak]:.3f} at {t_ms[i_peak]:.0f} ms: p = '
-        f'{p_val[i_peak]:.3f}; null at that time: mean {null[:, i_peak].mean():.3f}, '
-        f'95th percentile {np.percentile(null[:, i_peak], 95):.3f}')
-    log('  note: p values are per time point, not corrected for multiple comparisons')
+        f'{p_val[i_peak]:.4f}, FDR-adjusted {p_fdr[i_peak]:.4f}; null at that time: '
+        f'mean {null_mean[i_peak]:.3f}, 95th percentile {null_p95[i_peak]:.3f}')
 
     fig, (ax, ax_p) = plt.subplots(2, 1, figsize=(9, 6.5), sharex=True,
                                    gridspec_kw=dict(height_ratios=[3, 1.3]))
     ax.fill_between(t_ms, np.percentile(null, 2.5, axis=0),
-                    np.percentile(null, 97.5, axis=0), color='0.8',
+                    np.percentile(null, 97.5, axis=0), color='0.85',
                     label=f'null, middle 95% ({n} permutations)')
-    ax.plot(t_ms, null.mean(axis=0), color='0.4', lw=1, label='null mean')
+    ax.plot(t_ms, null_mean, color='0.3', lw=1.5, label='null mean (actual chance level)')
+    ax.plot(t_ms, null_p95, color='0.3', lw=1, ls=':', label='null 95th percentile')
     ax.plot(t_ms, real_curve, color='#6a4dd6', lw=2, label='real (mean of 2000)')
-    ax.plot(t_ms[sig], np.full(sig.sum(), real_curve.max() + 0.03), 'k.',
-            label='p < 0.05 (uncorrected)')
+    ax.plot(t_ms[sig_fdr], np.full(sig_fdr.sum(), real_curve.max() + 0.03), 'k.',
+            label=f'FDR q < {FDR_Q}')
     ax.axhline(0.5, color='k', lw=0.8, ls='--')
     ax.set_ylabel('accuracy')
     ax.legend(fontsize=8, loc='lower left')
     ax.set_title('Face vs car decoding against the permutation null')
-    ax_p.plot(t_ms, p_val, color='k', lw=1)
-    ax_p.axhline(0.05, color='#c2385a', lw=0.8, ls='--')
-    ax_p.set_ylabel('p (uncorrected)')
+    ax_p.plot(t_ms, p_val, color='0.5', lw=1, label='p (uncorrected)')
+    ax_p.plot(t_ms, p_fdr, color='k', lw=1, label='p (FDR-adjusted)')
+    ax_p.axhline(FDR_Q, color='#c2385a', lw=0.8, ls='--')
+    ax_p.set_ylabel('p')
     ax_p.set_xlabel('time (ms)')
+    ax_p.legend(fontsize=8, loc='upper right')
     for a in (ax, ax_p):
         a.axvline(0, color='k', lw=0.8)
         a.axvspan(N170_WIN[0] * 1000, N170_WIN[1] * 1000, color='#f2d98c',

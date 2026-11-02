@@ -3,6 +3,7 @@
 2.1 Mark the 3 EOG electrodes (HEOG_left, HEOG_right, VEOG_lower) as EOG type;
     compute bipolar EOG: HEOG = HEOG_left - HEOG_right, VEOG = VEOG_lower - FP2
 2.2 Average reference over the 30 scalp EEG channels (EOG excluded)
+2.3.1 High-pass filter at 0.1 Hz
 """
 from pathlib import Path
 
@@ -47,3 +48,11 @@ save(raw, 'step2_eog-raw.fif')
 # before this, so it is unaffected (both of its electrodes shared a reference).
 raw.set_eeg_reference('average', projection=False)
 save(raw, 'step2_avgref-raw.fif')
+
+# --- 2.3.1 High-pass 0.1 Hz --------------------------------------------------
+# Removes slow drifts (sweat, skin potentials, electrode drift). MNE default
+# FIR: zero-phase, Hamming window, 0.1 Hz transition band (-6 dB at 0.05 Hz),
+# ~33 s kernel. EOG is filtered too so it stays comparable with EEG for ICA
+# and epoch rejection later.
+raw.filter(l_freq=0.1, h_freq=None, picks=['eeg', 'eog'])
+save(raw, 'step2_hp-raw.fif')

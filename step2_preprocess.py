@@ -33,6 +33,7 @@ EVENTS_FILE = RAW_FILE.with_name('sub-001_task-N170_events.tsv')
 # Epoch rejection (2.5)
 STIM_DURATION = 0.3          # s the image stays on screen (events.tsv duration)
 EEG_Z_THRESHOLD = 3.0        # per-channel peak-to-peak, mean + 3 SD
+EEG_PTP_FLOOR_UV = 100.0     # ... and also above 100 µV peak-to-peak
 HEOG_STEP_THRESHOLD = 32.0   # µV, about 2 degrees of gaze
 RT_RANGE_MS = (200, 1000)    # ERP CORE behavioural limits
 # Head outline for topomaps: the dataset's electrodes sit on an 85 mm sphere
@@ -353,14 +354,18 @@ log['category'] = [name for c in log.code for lo, hi, name in CATEGORIES if lo <
 
 # 2.5.1 Scalp EEG amplitude: peak-to-peak of each channel over the whole
 # epoch; an epoch fails if any channel exceeds that channel's own
-# mean + 3 SD across epochs (3 SD is the strictest allowed).
+# mean + 3 SD across epochs (3 SD is the strictest allowed) AND is above
+# 100 µV. The floor keeps quiet channels (C3's 3 SD limit is ~45 µV) from
+# rejecting epochs that are well within normal EEG range.
 eeg_names = epochs.copy().pick('eeg').ch_names
 ptp = np.ptp(epochs.get_data(picks='eeg'), axis=2) * 1e6       # epochs x channels
 z = (ptp - ptp.mean(0)) / ptp.std(0)
+too_big = (z > EEG_Z_THRESHOLD) & (ptp > EEG_PTP_FLOOR_UV)
+log['eeg_max_ptp_ch'] = [eeg_names[i] for i in ptp.argmax(1)]
+log['eeg_max_ptp_uv'] = ptp.max(1)
 log['eeg_max_z'] = z.max(1)
-log['eeg_worst_ch'] = [eeg_names[i] for i in z.argmax(1)]
-log['eeg_worst_ptp_uv'] = ptp[np.arange(len(ptp)), z.argmax(1)]
-log['EEG_AMPLITUDE'] = log.eeg_max_z > EEG_Z_THRESHOLD
+log['eeg_bad_chs'] = [','.join(eeg_names[j] for j in np.where(row)[0]) for row in too_big]
+log['EEG_AMPLITUDE'] = too_big.any(1)
 
 # 2.5.2a Blinks during the stimulus: VEOG (uncorrected) peak-to-peak within
 # the 300 ms the image is on screen, against half of this subject's median
@@ -423,9 +428,9 @@ for i in log.index[log.rejected][::-1]:
 clean.save(DATA / 'step2_clean-epo.fif', overwrite=True)
 print(f'Saved: data/step2_clean-epo.fif')
 
-print(f'EEG z threshold {EEG_Z_THRESHOLD} -> per-channel ptp limits '
-      f'{(ptp.mean(0) + EEG_Z_THRESHOLD * ptp.std(0)).min():.0f}-'
-      f'{(ptp.mean(0) + EEG_Z_THRESHOLD * ptp.std(0)).max():.0f} µV')
+limits = np.maximum(ptp.mean(0) + EEG_Z_THRESHOLD * ptp.std(0), EEG_PTP_FLOOR_UV)
+print(f'EEG: mean + {EEG_Z_THRESHOLD} SD and > {EEG_PTP_FLOOR_UV:.0f} µV -> '
+      f'per-channel ptp limits {limits.min():.0f}-{limits.max():.0f} µV')
 print(f'Blinks in continuous VEOG: {len(blink_events)}, median size '
       f'{blink_size:.0f} µV -> VEOG threshold {veog_threshold:.0f} µV')
 print('Epochs failing each rule (an epoch can fail several):')

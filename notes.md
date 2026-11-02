@@ -107,3 +107,8 @@
 - 各类正确率：car 0.69、face 0.79、scrambled_car 0.78、scrambled_face 0.82
 - 合计剔除 92 / 320，保留 228：face 60、car 48、scrambled_face 62、scrambled_car 58；只因答错被剔除的有 63 个
 - 输出：data/step2_reject_log.csv、data/step2_clean-epo.fif
+
+### ICA 成分编号的保护检查
+- 人工确认的眼电成分写在常量 ICA_EOG_CONFIRMED = [0, 3]；ica.exclude 用这个常量
+- 如果 find_bads_eog 给出的候选和它不一致（比如上游多标了坏导、改了滤波，ICA 重跑后编号变了），脚本在去成分之前 raise RuntimeError 停下，提示重新看 figs/step2_ica_*.png 再更新常量；报错前 ICA 图已经按新结果重画好
+- 测试：把常量临时改成 [0, 4] → 报错停下，没有写出 step2_ica-raw.fif；改回 [0, 3] 正常跑完，data/ 里 10 个 step2_* 文件和备份逐个 SHA256 一致

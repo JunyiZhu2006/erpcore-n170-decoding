@@ -8,6 +8,8 @@
 2.3.2 Low-pass filter at 30 Hz
 2.3.3a ICA on a 1 Hz high-passed copy; find EOG component candidates
 2.3.3b Remove the EOG components (ICA000, ICA003) from the 0.1-30 Hz data
+2.3.4 Interpolate Oz, re-reference to the average of all 30 scalp channels
+2.4 Epochs from -200 to 800 ms around each stimulus, baseline -200..0 ms
 """
 from pathlib import Path
 
@@ -228,4 +230,81 @@ axes[0].set_ylabel('µV')
 axes[0].legend(fontsize=8)
 fig.tight_layout()
 fig.savefig(FIGS / 'step2_ica_erp_before_after.png', dpi=100)
+plt.close('all')
+
+# --- 2.3.4 Interpolate Oz, re-reference to the average of all 30 ------------
+# Done after ICA so Oz's jumps never entered the decomposition. Spherical
+# spline interpolation from the neighbours; the dataset's electrodes sit on a
+# sphere centred at the origin, so that is the interpolation origin.
+oz_original = raw_clean.get_data(picks='Oz')[0].copy()
+raw_clean.interpolate_bads(reset_bads=True, origin=(0.0, 0.0, 0.0))
+# Oz is now a mix of the other 29 (already average-referenced); re-reference
+# so all 30 scalp channels sum to zero again. The 30 channels have rank 28.
+raw_clean.set_eeg_reference('average', projection=False)
+save(raw_clean, 'step2_interp-raw.fif')
+
+eeg_now = raw_clean.get_data(picks='eeg')
+oz_new = raw_clean.get_data(picks='Oz')[0]
+o12 = raw_clean.get_data(picks=['O1', 'O2']).mean(0)
+print(f'Bad channels now: {raw_clean.info["bads"]}')
+print(f'Sum of 30 EEG, max |.|: {np.abs(eeg_now.sum(0)).max() * 1e6:.4f} µV')
+print(f'Oz std: original {oz_original.std() * 1e6:.1f} µV, '
+      f'interpolated {oz_new.std() * 1e6:.1f} µV; '
+      f'O1 {raw_clean.get_data(picks="O1")[0].std() * 1e6:.1f}, '
+      f'O2 {raw_clean.get_data(picks="O2")[0].std() * 1e6:.1f} µV')
+print(f'corr(interpolated Oz, mean of O1/O2): {np.corrcoef(oz_new, o12)[0, 1]:.2f}')
+
+# --- 2.4 Epochs: -200 to 800 ms around each stimulus, baseline correction ---
+# Event codes (task-N170_events.json): 1-40 faces, 41-80 cars,
+# 101-140 scrambled faces, 141-180 scrambled cars; 201/202 are responses.
+# Each epoch keeps the stimulus code as a tag, e.g. 'face/12', so that
+# epochs['face'] selects a whole category.
+CATEGORIES = [(1, 40, 'face'), (41, 80, 'car'),
+              (101, 140, 'scrambled_face'), (141, 180, 'scrambled_car')]
+annot_events, annot_ids = mne.events_from_annotations(raw_clean)
+event_id = {}
+for desc, code in annot_ids.items():
+    for lo, hi, name in CATEGORIES:
+        if lo <= int(desc) <= hi:
+            event_id[f'{name}/{desc}'] = code
+
+# Baseline: for every epoch and channel, subtract the mean of -200..0 ms.
+# Done after filtering because the 0.1 Hz high-pass kernel is ~33 s long.
+# No rejection yet (that is the next step); EOG channels are kept, still
+# uncorrected, for rejecting blinks/eye movements during the stimulus.
+epochs = mne.Epochs(raw_clean, annot_events, event_id=event_id,
+                    tmin=-0.2, tmax=0.8, baseline=(-0.2, 0),
+                    picks=['eeg', 'eog'], reject=None, preload=True)
+epochs.save(DATA / 'step2_epochs-epo.fif', overwrite=True)
+print(f'Saved: data/step2_epochs-epo.fif')
+
+print(epochs)
+for _, _, name in CATEGORIES:
+    print(f'  {name}: {len(epochs[name])}')
+# At 1024 Hz the first sample is -200.2 ms, which lies just outside the
+# baseline window; use the same samples MNE used for the baseline
+b0, b1 = epochs.baseline
+in_base = (epochs.times >= b0) & (epochs.times <= b1)
+base = epochs.get_data(picks='eeg')[:, :, in_base].mean(2)
+print(f'Baseline mean per epoch/channel, max |.|: {np.abs(base).max() * 1e6:.2e} µV')
+
+# Quick look: average ERP per category at the N170 sites
+fig, axes = plt.subplots(1, 4, figsize=(15, 3.5), sharey=True)
+colors = dict(face='#c2385a', car='#1c8cc6', scrambled_face='#e8a0b0',
+              scrambled_car='#a0c8e0')
+for ax, ch in zip(axes, ['P7', 'PO7', 'P8', 'PO8']):
+    for _, _, name in CATEGORIES:
+        evk = epochs[name].average(picks=ch)
+        ax.plot(evk.times * 1000, evk.data[0] * 1e6, color=colors[name],
+                lw=1.8 if 'scrambled' not in name else 1, label=name)
+    ax.axvline(0, color='k', lw=0.5)
+    ax.axhline(0, color='k', lw=0.5)
+    ax.axvspan(130, 200, color='0.9', zorder=0)
+    ax.set_title(ch)
+    ax.set_xlabel('time (ms)')
+axes[0].set_ylabel('µV')
+axes[0].legend(fontsize=8)
+fig.suptitle('All epochs, no rejection yet (grey band = 130-200 ms)')
+fig.tight_layout()
+fig.savefig(FIGS / 'step2_epochs_erp_by_category.png', dpi=100)
 plt.close('all')

@@ -76,3 +76,18 @@
 - 29 个 EEG 平均标准差 24.5 → 17.3 µV
 - N170 电极 ERP（全部 trial，未剔除）：−200~500 ms 校正前后 r = 0.97~0.997，平均差 0.3~0.4 µV；500~800 ms 差异较大（1.8~2.6 µV），是刺激后的眨眼被去掉了
 - 脸−车（130–200 ms）：P7 −3.74 → −3.60，P8 −1.32 → −1.83，PO7 −1.46 → −1.47，PO8 −0.82 → −1.20 µV（figs/step2_ica_erp_before_after.png）
+
+### 2.3.4 Oz 插值 + 30 通道平均参考
+- ICA 之后再插值：interpolate_bads(reset_bads=True, origin=(0, 0, 0))，球面样条，用其余 29 个电极
+- 再做一次平均参考（30 个通道），每个时间点之和 = 0；插值的 Oz 是其他通道的线性组合，30 个通道的秩是 28
+- Oz 标准差：原始 100.0 → 插值后 12.4 µV（O1 13.3，O2 13.1）；插值 Oz 和 O1/O2 平均的相关 0.97
+- 输出：data/step2_interp-raw.fif
+
+### 2.4 切 epoch + 基线校正
+- 刺激 1–180 共 320 个，按类别打标签 face/car/scrambled_face/scrambled_car + 编号（如 'face/12'）
+- tmin −0.2，tmax 0.8，baseline (−0.2, 0)；1024 Hz 下第一个点是 −200.2 ms，基线窗口实际 205 个点（−199.2 ~ 0 ms）
+- 保留 30 EEG + 5 EOG（EOG 是 ICA 前的，留给剔除用）；还没剔除任何 epoch
+- 每类 80 个；基线均值 max 2e−14 µV（= 0）
+- 输出：data/step2_epochs-epo.fif（43.8 MB）；图：figs/step2_epochs_erp_by_category.png
+- 130–200 ms 平均（µV）：P7 face −0.74 / car 2.83（差 −3.57，face 最低 −3.70 @ 179 ms）；P8 face 0.60 / car 2.40（差 −1.80）；PO7 差 −1.44；PO8 差 −1.17；四个电极都是 face 最负
+- 给剔除做参考：每个 epoch 最大通道峰峰值 中位 119 / 90% 179 / 99% 280 / 最大 447 µV；VEOG 峰峰值 中位 97 / 90% 318 / 最大 543；HEOG 中位 42 / 90% 79 / 最大 175

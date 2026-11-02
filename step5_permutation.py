@@ -3,15 +3,20 @@
 Each permutation:
   1. shuffle the 108 trial labels (still 60 faces, 48 cars)
   2. with the shuffled labels, draw faces and group into traces again
-     (make_groups, 20 draws x 100 groupings, same as the main analysis)
-  3. decode with the same decode_curve, and average the 2000 curves
+     (make_groups, 20 draws x 10 groupings)
+  3. decode with the same decode_curve, and average the 200 curves
 This gives, at every time point, what the main curve looks like when there is
-no real face/car information. 100 permutations.
+no real face/car information. 1000 permutations.
 
-The work is split into 100 permutations x 20 draws = 2000 tasks; every
-finished task is saved to its own file, so an interrupted run picks up where
-it stopped. Results can be summarised at any time from the finished
-permutations.
+Why 1000 x (20 x 10) and not 100 x (20 x 100) like the main analysis: with N
+permutations the smallest p is 1/(1+N), and FDR over 100 time points needs
+the k-th smallest p <= 0.05 * k / 100. With 100 permutations nothing could
+pass unless 20+ time points were all at the minimum p. Fewer curves per
+permutation make the null wider, so the test is if anything conservative.
+
+Each permutation is one task saved to its own file, so an interrupted run
+picks up where it stopped. Results can be summarised at any time from the
+finished permutations.
 
 Run:      .venv\\Scripts\\python.exe step5_permutation.py [--jobs 8]
 Summary:  .venv\\Scripts\\python.exe step5_permutation.py --summary-only
@@ -33,11 +38,14 @@ from step4_lib import (DATA, DECODE_SFREQ, FIGS, N170_WIN, N_FACE_DRAWS,
                        decode_curve, keep_awake, make_groups,
                        permutation_seeds, shuffle_labels)
 
-N_PERM = 100
+N_PERM = 1000
+# Groupings per face draw within one permutation (main analysis: 100)
+PERM_GROUPINGS = 10
 # Multiple comparisons: FDR (Benjamini-Hochberg) over all 100 time points
 FDR_Q = 0.05
 RESULTS = DATA / f'step5_perm_{DECODE_SFREQ}hz'
 LOG = RESULTS / 'progress.log'
+LOG_EVERY = 10   # write a progress line every this many permutations
 
 
 def log(msg):
@@ -47,46 +55,46 @@ def log(msg):
         f.write(line + '\n')
 
 
-def task_file(p, d):
-    return RESULTS / f'perm_{p:03d}_draw_{d:02d}.npy'
+def perm_file(p):
+    return RESULTS / f'perm_{p:04d}.npy'
 
 
-def run_task(X, y, p, d):
-    """Permutation p, face draw d: decode its 100 groupings, save their mean."""
+def run_perm(X, y, p):
+    """Permutation p: shuffle labels, regroup, decode 20 x 10 curves.
+
+    Saves the 20 draw means (draws x time); the permutation's curve is their
+    mean.
+    """
     shuffle_seed, draw_seeds = permutation_seeds(p)
     y_perm = shuffle_labels(y, shuffle_seed)
-    _, groups = make_groups(y_perm, [draw_seeds[d]])
-    acc = np.array([decode_curve(X, g[0], g[1]) for g in groups[0]])
-    tmp = task_file(p, d).with_suffix('.tmp.npy')
-    np.save(tmp, acc.mean(axis=0))          # mean over the 100 groupings
-    tmp.replace(task_file(p, d))            # only complete files count
-    return p, d
+    _, groups = make_groups(y_perm, draw_seeds, n_groupings=PERM_GROUPINGS)
+    draw_means = np.array([np.mean([decode_curve(X, g[0], g[1]) for g in groups_d],
+                                   axis=0) for groups_d in groups])
+    tmp = perm_file(p).with_suffix('.tmp.npy')
+    np.save(tmp, draw_means)
+    tmp.replace(perm_file(p))           # only complete files count
+    return p
 
 
 def finished_perms():
-    return [p for p in range(N_PERM)
-            if all(task_file(p, d).exists() for d in range(N_FACE_DRAWS))]
+    return [p for p in range(N_PERM) if perm_file(p).exists()]
 
 
 def run(n_jobs):
     xy = np.load(DATA / f'step4_Xy_{DECODE_SFREQ}hz.npz')
     X, y = xy['X'], xy['y']
-    todo = [(p, d) for p in range(N_PERM) for d in range(N_FACE_DRAWS)
-            if not task_file(p, d).exists()]
-    left = {p: sum(1 for q, _ in todo if q == p) for p in range(N_PERM)}
-    n_perm_todo = sum(1 for p in left if left[p])
-    log(f'start: {n_perm_todo} of {N_PERM} permutations to do '
-        f'({len(todo)} draw tasks), {n_jobs} parallel jobs')
+    todo = [p for p in range(N_PERM) if not perm_file(p).exists()]
+    log(f'start: {len(todo)} of {N_PERM} permutations to do '
+        f'({N_PERM - len(todo)} already saved), {N_FACE_DRAWS} x {PERM_GROUPINGS} '
+        f'curves each, {n_jobs} parallel jobs')
     t0 = time.time()
-    n_done = 0
-    jobs = (delayed(run_task)(X, y, p, d) for p, d in todo)
-    for p, d in Parallel(n_jobs=n_jobs, return_as='generator_unordered')(jobs):
-        left[p] -= 1
-        if left[p] == 0:
-            n_done += 1
+    jobs = (delayed(run_perm)(X, y, p) for p in todo)
+    for n_done, _ in enumerate(Parallel(n_jobs=n_jobs,
+                                        return_as='generator_unordered')(jobs), 1):
+        if n_done % LOG_EVERY == 0 or n_done == len(todo):
             elapsed = time.time() - t0
-            eta = elapsed / n_done * (n_perm_todo - n_done)
-            log(f'  permutation {p + 1:3d} done ({n_done}/{n_perm_todo}), '
+            eta = elapsed / n_done * (len(todo) - n_done)
+            log(f'  {n_done}/{len(todo)} permutations done, '
                 f'elapsed {timedelta(seconds=round(elapsed))}, '
                 f'about {timedelta(seconds=round(eta))} left')
     log('all permutations done')
@@ -100,9 +108,8 @@ def summarise():
     real = np.load(DATA / f'step4_accuracy_{DECODE_SFREQ}hz.npz')
     real_curve, times = real['mean_curve'], real['times']
     t_ms = times * 1000
-    # null[perm, time]: mean of the permutation's 2000 curves
-    null = np.stack([np.mean([np.load(task_file(p, d)) for d in range(N_FACE_DRAWS)],
-                             axis=0) for p in perms])
+    # null[perm, time]: mean of the permutation's 200 curves
+    null = np.stack([np.load(perm_file(p)).mean(axis=0) for p in perms])
     n = len(null)
     # p at every time point: share of permutations at least as high as the
     # real curve, counting the real result itself (+1), uncorrected

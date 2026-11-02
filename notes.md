@@ -109,6 +109,8 @@
 - 输出：data/step2_reject_log.csv、data/step2_clean-epo.fif
 
 ### ICA 成分编号的保护检查
-- 人工确认的眼电成分写在常量 ICA_EOG_CONFIRMED = [0, 3]；ica.exclude 用这个常量
-- 如果 find_bads_eog 给出的候选和它不一致（比如上游多标了坏导、改了滤波，ICA 重跑后编号变了），脚本在去成分之前 raise RuntimeError 停下，提示重新看 figs/step2_ica_*.png 再更新常量；报错前 ICA 图已经按新结果重画好
-- 测试：把常量临时改成 [0, 4] → 报错停下，没有写出 step2_ica-raw.fif；改回 [0, 3] 正常跑完，data/ 里 10 个 step2_* 文件和备份逐个 SHA256 一致
+- 人工确认的眼电成分写在常量 ICA_EOG_CONFIRMED = {0: ('VEOG', 0.95), 3: ('HEOG', 0.80)}：成分编号、它对应的眼电通道、确认时和该通道的 |r|（find_bads_eog 的分数）；ica.exclude 用这个常量的编号
+- 检查 1：find_bads_eog 给出的候选和常量里的编号不一致（比如上游多标了坏导、改了滤波，ICA 重跑后编号变了）→ raise RuntimeError 停下
+- 检查 2：编号一致，但某个成分和它的眼电通道的 |r| 比确认时下降超过 0.10（ICA_EOG_MAX_R_DROP）→ 也停下；防止"编号碰巧没变、成分已经变了"
+- 停下时提示重新看 figs/step2_ica_*.png 再更新常量；报错前 ICA 图已经按新结果重画好；两项检查都在去成分之前，不会写出 step2_ica-raw.fif
+- 测试：编号改成 {0, 4} → 检查 1 报错；ICA003 的确认值改成 0.95（现在 0.80，降 0.15）→ 检查 2 报错；原样运行正常跑完，data/ 里 10 个 step2_* 文件和备份逐个 SHA256 一致

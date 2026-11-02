@@ -45,10 +45,14 @@ N170_WIN = (0.110, 0.150)
 
 EOG_CHANNELS = ['HEOG_left', 'HEOG_right', 'VEOG_lower']
 BAD_CHANNELS = ['Oz']  # intermittent jumps up to ~1700 µV, low-frequency only
-# EOG components confirmed by eye for the current ICA run (ICA000 = blinks,
-# ICA003 = horizontal eye movements); the script stops if they no longer
-# match what find_bads_eog suggests
-ICA_EOG_CONFIRMED = [0, 3]
+# EOG components confirmed by eye for the current ICA run, with the EOG
+# channel each one follows and its |r| with that channel at the time of
+# confirmation (find_bads_eog scores). The script stops if find_bads_eog
+# suggests other components, or if a confirmed one's |r| drops by more than
+# ICA_EOG_MAX_R_DROP.
+ICA_EOG_CONFIRMED = {0: ('VEOG', 0.95),   # blinks
+                     3: ('HEOG', 0.80)}   # horizontal eye movements
+ICA_EOG_MAX_R_DROP = 0.10
 
 
 def save(raw, name):
@@ -179,14 +183,26 @@ plt.close('all')
 if sorted(eog_idx) != sorted(ICA_EOG_CONFIRMED):
     raise RuntimeError(
         f'find_bads_eog now suggests {eog_idx}, but ICA_EOG_CONFIRMED is '
-        f'{ICA_EOG_CONFIRMED}. The ICA has changed: re-check the components '
-        f'(figs/step2_ica_*.png), then update ICA_EOG_CONFIRMED.')
+        f'{sorted(ICA_EOG_CONFIRMED)}. The ICA has changed: re-check the '
+        f'components (figs/step2_ica_*.png), then update ICA_EOG_CONFIRMED.')
+# Same indices can still hide a changed component: also require that each
+# one still follows its EOG channel about as closely as when confirmed
+score_by_ch = dict(zip(['HEOG', 'VEOG'], eog_scores))
+for comp, (ch, r_confirmed) in ICA_EOG_CONFIRMED.items():
+    r_now = abs(score_by_ch[ch][comp])
+    print(f'  ICA{comp:03d} |r| with {ch}: now {r_now:.2f}, confirmed {r_confirmed:.2f}')
+    if r_now < r_confirmed - ICA_EOG_MAX_R_DROP:
+        raise RuntimeError(
+            f'ICA{comp:03d} now has |r| = {r_now:.2f} with {ch}, down from '
+            f'{r_confirmed:.2f} when it was confirmed. The ICA has changed: '
+            f're-check the components (figs/step2_ica_*.png), then update '
+            f'ICA_EOG_CONFIRMED.')
 
 # --- 2.3.3b ICA: remove the EOG components from the 0.1-30 Hz data ----------
 # Confirmed by eye (topomaps, time courses, step2_check_ica003.py):
 # ICA000 = blinks, ICA003 = horizontal eye movements. All other components
 # are kept, including ICA010 (bilateral P9/P10, the N170 face effect).
-ica.exclude = ICA_EOG_CONFIRMED
+ica.exclude = sorted(ICA_EOG_CONFIRMED)
 raw_clean = ica.apply(raw.copy())
 # Only the 29 ICA channels change; EOG channels keep the uncorrected signal,
 # which is what epoch rejection must look at later. Oz (bad) is untouched.

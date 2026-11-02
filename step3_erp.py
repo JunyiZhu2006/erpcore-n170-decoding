@@ -5,6 +5,7 @@
 3.2 Average each set per electrode: the face ERP and the car ERP
 3.3 At PO7 and PO8: face, car and the face - car difference wave
 3.4 Mean of the difference wave over 110-150 ms, with a 95% CI band
+3.5 Topography: face - car in 110-150 ms at every electrode
 """
 from pathlib import Path
 
@@ -21,6 +22,9 @@ FIGS = ROOT / 'figs'
 # N170 measurement window used by ERP CORE (Kappenman et al., 2021)
 N170_WIN = (0.110, 0.150)
 COLORS = dict(face='#c2385a', car='#1c8cc6')
+# Head outline for topomaps, same as step 2: the dataset's electrodes sit on
+# an 85 mm sphere centred at the origin
+SPHERE = (0, 0, 0, 0.085)
 
 # --- 3.1 Two sets of trials: faces and cars ---------------------------------
 epochs = mne.read_epochs(DATA / 'step2_clean-epo.fif')
@@ -92,4 +96,23 @@ fig.suptitle('Yellow band = ERP CORE N170 window (110-150 ms); '
              'grey = 95% CI of the difference wave')
 fig.tight_layout()
 fig.savefig(FIGS / 'step3_diff_PO7_PO8.png', dpi=100)
+plt.close('all')
+
+# --- 3.5 Topography of face - car in 110-150 ms ------------------------------
+# One number per electrode, drawn on the head. Expected: negative over both
+# sides of the back of the head; positive over the forehead (a consequence of
+# the average reference).
+topo = diff.data[:, win].mean(axis=1) * 1e6
+print('Face - car, mean over 110-150 ms, all electrodes (µV, most negative first):')
+for i in np.argsort(topo):
+    print(f'  {diff.ch_names[i]:>4} {topo[i]:6.2f}')
+
+lim = np.abs(topo).max()
+fig, ax = plt.subplots(figsize=(6, 5.5))
+im, _ = mne.viz.plot_topomap(topo, diff.info, axes=ax, sphere=SPHERE,
+                             cmap='RdBu_r', vlim=(-lim, lim), contours=6,
+                             names=diff.ch_names, show=False)
+fig.colorbar(im, ax=ax, shrink=0.7, label='face - car (µV)')
+ax.set_title('Face - car, 110-150 ms')
+fig.savefig(FIGS / 'step3_topo_diff.png', dpi=100, bbox_inches='tight')
 plt.close('all')

@@ -15,12 +15,17 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import mne
 import numpy as np
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / 'data'
 FIGS = ROOT / 'figs'
 RAW_FILE = (DATA / 'step1_erpcore_N170' / 'erpcore' / 'N170'
             / 'sub-001' / 'eeg' / 'sub-001_task-N170_eeg.set')
+ELEC_FILE = RAW_FILE.with_name('sub-001_task-N170_electrodes.tsv')
+# Head outline for topomaps: the dataset's electrodes sit on an 85 mm sphere
+# centred at the origin, so electrodes at z = 0 (FP1/FP2, O1/O2) fall on it
+SPHERE = (0, 0, 0, 0.085)
 
 EOG_CHANNELS = ['HEOG_left', 'HEOG_right', 'VEOG_lower']
 BAD_CHANNELS = ['Oz']  # intermittent jumps up to ~1700 µV, low-frequency only
@@ -50,11 +55,15 @@ raw = mne.set_bipolar_reference(
 )
 raw.set_channel_types({'HEOG': 'eog', 'VEOG': 'eog'})
 
-# The .set file has no electrode positions; use the standard 10-20 template
-# (needed for ICA topomaps and for interpolating bad channels). FP1/FP2 are
-# spelled Fp1/Fp2 in the template, hence match_case=False.
-raw.set_montage(mne.channels.make_standard_montage('colin27_1020'),
-                match_case=False)
+# The .set file has no electrode positions; take them from the dataset's own
+# electrodes.tsv (needed for ICA topomaps and for interpolating bad channels).
+# These are idealised positions on an 85 mm sphere, not digitised per subject.
+# coordsystem.json says ARS, but left electrodes (FP1, F7, ...) have +y, so
+# the axes are x = nose, y = left ear, z = up. MNE's head frame is x = right,
+# y = nose, z = up, in metres.
+elec = pd.read_csv(ELEC_FILE, sep='\t', na_values='n/a').dropna().set_index('name')
+ch_pos = {name: np.array([-r.y, r.x, r.z]) / 1000 for name, r in elec.iterrows()}
+raw.set_montage(mne.channels.make_dig_montage(ch_pos=ch_pos, coord_frame='head'))
 
 # Bad channels stay in the data but are left out of the average reference
 # and, later, ICA; they get interpolated from their neighbours afterwards
@@ -113,13 +122,14 @@ for ch, sc in zip(['HEOG', 'VEOG'], eog_scores):
     print(f'  {ch} top |r|: ' + ', '.join(f'ICA{i:03d} {sc[i]:+.2f}' for i in top))
 
 # Figures for checking the candidates
-for i, fig in enumerate(np.atleast_1d(ica.plot_components(show=False))):
+for i, fig in enumerate(np.atleast_1d(ica.plot_components(sphere=SPHERE,
+                                                          show=False))):
     fig.savefig(FIGS / f'step2_ica_components_{i + 1}.png', dpi=100)
 fig = ica.plot_scores(eog_scores, exclude=eog_idx, labels=['HEOG', 'VEOG'],
                       show=False)
 fig.savefig(FIGS / 'step2_ica_eog_scores.png', dpi=100)
-for comp, fig in zip(eog_idx, ica.plot_properties(raw_ica, picks=eog_idx,
-                                                  show=False)):
+for comp, fig in zip(eog_idx, ica.plot_properties(
+        raw_ica, picks=eog_idx, topomap_args=dict(sphere=SPHERE), show=False)):
     fig.savefig(FIGS / f'step2_ica_props_ICA{comp:03d}.png', dpi=100)
 
 # Candidate time courses next to the bipolar EOG, 30 s window

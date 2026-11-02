@@ -6,13 +6,19 @@
 2.2 Average reference over the 29 good scalp EEG channels (Oz and EOG excluded)
 2.3.1 High-pass filter at 0.1 Hz
 2.3.2 Low-pass filter at 30 Hz
+2.3.3a ICA on a 1 Hz high-passed copy; find EOG component candidates
 """
 from pathlib import Path
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import mne
+import numpy as np
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / 'data'
+FIGS = ROOT / 'figs'
 RAW_FILE = (DATA / 'step1_erpcore_N170' / 'erpcore' / 'N170'
             / 'sub-001' / 'eeg' / 'sub-001_task-N170_eeg.set')
 
@@ -44,6 +50,12 @@ raw = mne.set_bipolar_reference(
 )
 raw.set_channel_types({'HEOG': 'eog', 'VEOG': 'eog'})
 
+# The .set file has no electrode positions; use the standard 10-20 template
+# (needed for ICA topomaps and for interpolating bad channels). FP1/FP2 are
+# spelled Fp1/Fp2 in the template, hence match_case=False.
+raw.set_montage(mne.channels.make_standard_montage('colin27_1020'),
+                match_case=False)
+
 # Bad channels stay in the data but are left out of the average reference
 # and, later, ICA; they get interpolated from their neighbours afterwards
 raw.info['bads'] = BAD_CHANNELS
@@ -74,3 +86,56 @@ save(raw, 'step2_hp-raw.fif')
 # 7.5 Hz transition band (-6 dB at 33.75 Hz), ~0.44 s kernel.
 raw.filter(l_freq=None, h_freq=30, picks=FILTER_PICKS)
 save(raw, 'step2_lp-raw.fif')
+
+# --- 2.3.3a ICA: fit and find EOG candidates ---------------------------------
+# Fit on a copy high-passed at 1 Hz: slow drifts do not have a fixed scalp
+# distribution and would degrade the decomposition. The unmixing found here
+# is applied to the 0.1-30 Hz data later.
+raw_ica = raw.copy().filter(l_freq=1, h_freq=None, picks=FILTER_PICKS)
+
+# Only the 29 good scalp channels are used (EOG and bad Oz are left out).
+# After average reference their rank is 28, so at most 28 components.
+# 2-s segments with any channel > 500 µV peak-to-peak are skipped during
+# fitting (about 1% of the recording); blinks stay well below this.
+ica = mne.preprocessing.ICA(n_components=None, method='fastica',
+                            random_state=97, max_iter='auto')
+ica.fit(raw_ica, picks='eeg', reject=dict(eeg=500e-6), tstep=2.0)
+ica.save(DATA / 'step2_ica-ica.fif', overwrite=True)
+
+# Bipolar EOG is used here for the first time: components that correlate
+# strongly with HEOG or VEOG are candidates, to be confirmed by eye
+eog_idx, eog_scores = ica.find_bads_eog(raw_ica, ch_name=['HEOG', 'VEOG'])
+eog_idx = [int(i) for i in eog_idx]
+print(f'ICA components: {ica.n_components_}')
+print(f'EOG candidates: {eog_idx}')
+for ch, sc in zip(['HEOG', 'VEOG'], eog_scores):
+    top = np.argsort(np.abs(sc))[::-1][:3]
+    print(f'  {ch} top |r|: ' + ', '.join(f'ICA{i:03d} {sc[i]:+.2f}' for i in top))
+
+# Figures for checking the candidates
+for i, fig in enumerate(np.atleast_1d(ica.plot_components(show=False))):
+    fig.savefig(FIGS / f'step2_ica_components_{i + 1}.png', dpi=100)
+fig = ica.plot_scores(eog_scores, exclude=eog_idx, labels=['HEOG', 'VEOG'],
+                      show=False)
+fig.savefig(FIGS / 'step2_ica_eog_scores.png', dpi=100)
+for comp, fig in zip(eog_idx, ica.plot_properties(raw_ica, picks=eog_idx,
+                                                  show=False)):
+    fig.savefig(FIGS / f'step2_ica_props_ICA{comp:03d}.png', dpi=100)
+
+# Candidate time courses next to the bipolar EOG, 30 s window
+t0, t1 = 20.0, 50.0
+eog = raw_ica.copy().crop(t0, t1)
+src = ica.get_sources(eog)
+rows = [('VEOG', eog.get_data(picks='VEOG')[0])]
+rows += [('HEOG', eog.get_data(picks='HEOG')[0])]
+rows += [(f'ICA{c:03d}', src.get_data(picks=[c])[0]) for c in eog_idx]
+fig, axes = plt.subplots(len(rows), 1, figsize=(12, 1.6 * len(rows)),
+                         sharex=True)
+for ax, (name, y) in zip(np.atleast_1d(axes), rows):
+    ax.plot(src.times + t0, y, lw=0.7, color='#c2385a' if 'EOG' in name else '#6a4dd6')
+    ax.set_ylabel(name, rotation=0, ha='right', va='center')
+    ax.set_yticks([])
+np.atleast_1d(axes)[-1].set_xlabel('time (s)')
+fig.tight_layout()
+fig.savefig(FIGS / 'step2_ica_sources_vs_eog.png', dpi=100)
+plt.close('all')

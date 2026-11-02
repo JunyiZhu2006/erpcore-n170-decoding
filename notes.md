@@ -47,3 +47,13 @@
 - 滤波 picks 用 pick_types(eeg=True, eog=True, exclude=[])，Oz 也一起滤（直流 5827 → 0.97 µV；40–100 Hz 功率 0.54 → 0.0023）
 - 29 个好通道平均标准差：avgref 163.4 → hp 27.7 → lp 24.5 µV（之前 30 通道版本：166.5 → 30.1 → 27.1）
 - 注意：figs/step2_psd_Oz_O1_O2.png 是标坏导之前的数据画的
+
+### 2.3.3a ICA 拟合与眼电成分候选
+- 2.1 加了电极位置：.set 里没有坐标，用 MNE 模板 colin27_1020（standard_1020 在 MNE 1.14 将被移除），match_case=False 让 FP1/FP2 对上 Fp1/Fp2
+- 副本：0.1–30 Hz 数据再做 1 Hz 高通；ICA 只用 29 个好的 EEG 通道（不含 Oz、EOG）
+- 拟合时跳过峰峰值 > 500 µV 的 2 秒片段：只跳过 1 段（FP1/FP2），占 0.29%
+- fastica，random_state=97；平均参考后秩为 28 → 28 个成分
+- 输出：data/step2_ica-ica.fif；图：figs/step2_ica_*.png
+- find_bads_eog 候选：ICA000（VEOG r=+0.95，前额对称地形图，时间曲线和眨眼一一对应）→ 眨眼
+  ICA003（HEOG r=+0.80，左前正右前负，最大 3 次 HEOG 跳变时 ICA003 同步阶跃，step2_check_ica003.py）→ 水平眼动
+- 其余成分和 HEOG/VEOG 的 |r| 都 < 0.1

@@ -54,5 +54,8 @@ print(f'CPU main curve: peak {cpu_curve[j_peak]:.3f} at {t_ms[j_peak]:.0f} ms; '
       f'before stimulus mean {cpu_curve[pre].mean():.3f}')
 print(f'GPU vs CPU main curve: max difference {d.max():.4f} at {t_ms[d.argmax()]:.0f} ms, '
       f'mean {d.mean():.4f}')
-print(f'GPU vs CPU single curves: identical {np.mean(acc == cpu["acc"]) * 100:.2f}% '
+# tolerance: the two sum the fold scores in a different order, which leaves
+# rounding differences of ~1e-16 that are not real differences
+same = np.isclose(acc, cpu['acc'], rtol=0, atol=1e-9)
+print(f'GPU vs CPU single curves: identical {same.mean() * 100:.2f}% '
       f'of curve points, max difference {np.abs(acc - cpu["acc"]).max():.4f}')

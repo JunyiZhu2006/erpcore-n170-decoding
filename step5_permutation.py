@@ -48,15 +48,15 @@ LOG = RESULTS / 'progress.log'
 LOG_EVERY = 10   # write a progress line every this many permutations
 
 
-def log(msg):
+def log(msg, results=RESULTS):
     line = f'{datetime.now():%Y-%m-%d %H:%M:%S}  {msg}'
     print(line, flush=True)
-    with open(LOG, 'a', encoding='utf-8') as f:
+    with open(results / LOG.name, 'a', encoding='utf-8') as f:
         f.write(line + '\n')
 
 
-def perm_file(p):
-    return RESULTS / f'perm_{p:04d}.npy'
+def perm_file(p, results=RESULTS):
+    return results / f'perm_{p:04d}.npy'
 
 
 def run_perm(X, y, p):
@@ -76,8 +76,8 @@ def run_perm(X, y, p):
     return p
 
 
-def finished_perms():
-    return [p for p in range(N_PERM) if perm_file(p).exists()]
+def finished_perms(results=RESULTS):
+    return [p for p in range(N_PERM) if perm_file(p, results).exists()]
 
 
 def run(n_jobs):
@@ -100,16 +100,24 @@ def run(n_jobs):
     log('all permutations done')
 
 
-def summarise():
-    perms = finished_perms()
+def summarise(results=RESULTS,
+              real_path=DATA / f'step4_accuracy_{DECODE_SFREQ}hz.npz',
+              null_path=DATA / f'step5_null_{DECODE_SFREQ}hz.npz',
+              fig_path=FIGS / f'step5_permutation_{DECODE_SFREQ}hz.png'):
+    """p values, FDR, figure. The defaults are step 5's files; step 6 (GPU)
+    passes its own."""
+    def say(msg):
+        log(msg, results)
+
+    perms = finished_perms(results)
     if not perms:
-        log('summary: no finished permutations yet')
+        say('summary: no finished permutations yet')
         return
-    real = np.load(DATA / f'step4_accuracy_{DECODE_SFREQ}hz.npz')
+    real = np.load(real_path)
     real_curve, times = real['mean_curve'], real['times']
     t_ms = times * 1000
     # null[perm, time]: mean of the permutation's 200 curves
-    null = np.stack([np.load(perm_file(p)).mean(axis=0) for p in perms])
+    null = np.stack([np.load(perm_file(p, results)).mean(axis=0) for p in perms])
     n = len(null)
     # p at every time point: share of permutations at least as high as the
     # real curve, counting the real result itself (+1), uncorrected
@@ -120,28 +128,28 @@ def summarise():
     sig_fdr, p_fdr = fdr_correction(p_val, alpha=FDR_Q, method='indep')
     null_mean = null.mean(axis=0)               # actual chance level of this pipeline
     null_p95 = np.percentile(null, 95, axis=0)  # how high chance alone gets (one-sided)
-    np.savez(DATA / f'step5_null_{DECODE_SFREQ}hz.npz', null=null, perms=np.array(perms),
+    np.savez(null_path, null=null, perms=np.array(perms),
              real_curve=real_curve, p_val=p_val, p_fdr=p_fdr, sig_fdr=sig_fdr,
              null_mean=null_mean, null_p95=null_p95, times=times)
 
     pre, post = t_ms < 0, t_ms >= 0
     sig = p_val < 0.05
-    log(f'summary from {n} permutations (smallest possible p = {1 / (1 + n):.4f})')
-    log(f'  null mean (actual chance level): overall {null_mean.mean():.3f}, before '
+    say(f'summary from {n} permutations (smallest possible p = {1 / (1 + n):.4f})')
+    say(f'  null mean (actual chance level): overall {null_mean.mean():.3f}, before '
         f'stimulus {null_mean[pre].mean():.3f}, 400-790 ms '
         f'{null_mean[t_ms >= 400].mean():.3f}, range {null_mean.min():.3f}-'
         f'{null_mean.max():.3f}')
-    log(f'  null 95th percentile: range {null_p95.min():.3f}-{null_p95.max():.3f}')
-    log(f'  self-check, before stimulus ({int(pre.sum())} points): FDR-significant '
+    say(f'  null 95th percentile: range {null_p95.min():.3f}-{null_p95.max():.3f}')
+    say(f'  self-check, before stimulus ({int(pre.sum())} points): FDR-significant '
         f'{int(sig_fdr[pre].sum())} (should be 0); uncorrected p < 0.05 '
         f'{int(sig[pre].sum())}; smallest p {p_val[pre].min():.4f} at '
         f'{t_ms[pre][p_val[pre].argmin()]:.0f} ms')
-    log(f'  after stimulus, FDR-significant (q = {FDR_Q}, all {len(p_val)} points): '
+    say(f'  after stimulus, FDR-significant (q = {FDR_Q}, all {len(p_val)} points): '
         + (', '.join(f'{x:.0f}' for x in t_ms[post & sig_fdr]) or 'none') + ' ms')
-    log(f'  after stimulus, uncorrected p < 0.05: '
+    say(f'  after stimulus, uncorrected p < 0.05: '
         + (', '.join(f'{x:.0f}' for x in t_ms[post & sig]) or 'none') + ' ms')
     i_peak = np.where(post)[0][real_curve[post].argmax()]
-    log(f'  real peak {real_curve[i_peak]:.3f} at {t_ms[i_peak]:.0f} ms: p = '
+    say(f'  real peak {real_curve[i_peak]:.3f} at {t_ms[i_peak]:.0f} ms: p = '
         f'{p_val[i_peak]:.4f}, FDR-adjusted {p_fdr[i_peak]:.4f}; null at that time: '
         f'mean {null_mean[i_peak]:.3f}, 95th percentile {null_p95[i_peak]:.3f}')
 
@@ -171,10 +179,10 @@ def summarise():
                   alpha=0.5, zorder=0)
         a.set_xlim(t_ms[0], t_ms[-1])
     fig.tight_layout()
-    fig.savefig(FIGS / f'step5_permutation_{DECODE_SFREQ}hz.png', dpi=100)
+    fig.savefig(fig_path, dpi=100)
     plt.close('all')
-    log(f'Saved: data/step5_null_{DECODE_SFREQ}hz.npz, '
-        f'figs/step5_permutation_{DECODE_SFREQ}hz.png')
+    say(f'Saved: {null_path.parent.name}/{null_path.name}, '
+        f'{fig_path.parent.name}/{fig_path.name}')
 
 
 def main():

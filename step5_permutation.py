@@ -160,7 +160,8 @@ def summarise(results=RESULTS,
                     label=f'null, middle 95% ({n} permutations)')
     ax.plot(t_ms, null_mean, color='0.3', lw=1.5, label='null mean (actual chance level)')
     ax.plot(t_ms, null_p95, color='0.3', lw=1, ls=':', label='null 95th percentile')
-    ax.plot(t_ms, real_curve, color='#6a4dd6', lw=2, label='real (mean of 2000)')
+    n_real = real['acc'].shape[0] * real['acc'].shape[1]
+    ax.plot(t_ms, real_curve, color='#6a4dd6', lw=2, label=f'real (mean of {n_real})')
     ax.plot(t_ms[sig_fdr], np.full(sig_fdr.sum(), real_curve.max() + 0.03), 'k.',
             label=f'FDR q < {FDR_Q}')
     ax.axhline(0.5, color='k', lw=0.8, ls='--')

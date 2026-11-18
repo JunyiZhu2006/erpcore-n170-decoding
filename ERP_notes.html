@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>基于 ERP CORE N170 单被试脑电的人脸与汽车知觉时间分辨解码</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1f2328; --muted: #5b6370; --line: #d9dcd6;
+    --soft: #f0f1ec; --accent: #3d5a99; --code: #eef0ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16181c; --fg: #e4e6ea; --muted: #9aa1ac; --line: #343841;
+      --soft: #1f2228; --accent: #8fa8e0; --code: #23262d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181c; --fg: #e4e6ea; --muted: #9aa1ac; --line: #343841;
+    --soft: #1f2228; --accent: #8fa8e0; --code: #23262d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.8 "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  .layout {
+    max-width: 780px; margin: 0 auto; padding: 40px 16px 80px;
+    display: grid; grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "top" "main";
+  }
+  /* narrow screens: the table of contents is a drawer from the left */
+  .toc-toggle {
+    position: fixed; left: 16px; bottom: 16px; z-index: 30;
+    font: inherit; font-size: .95rem; color: var(--fg); background: var(--soft);
+    border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15); cursor: pointer;
+  }
+  .toc-backdrop {
+    position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.35);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  body.toc-open .toc-backdrop { opacity: 1; pointer-events: auto; }
+  @media (max-width: 1099px) {
+    nav.toc {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 25; margin: 0;
+      width: min(300px, 85vw); overflow-y: auto; border-radius: 0;
+      padding: 20px 16px 72px; box-shadow: 2px 0 12px rgba(0,0,0,.2);
+      transform: translateX(-105%); transition: transform .2s; visibility: hidden;
+    }
+    body.toc-open nav.toc { transform: none; visibility: visible; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    nav.toc, .toc-backdrop { transition: none; }
+  }
+  .lang-block[hidden] { display: none; }
+  .lang-toggle {
+    position: fixed; right: 16px; top: 16px; z-index: 30;
+    font: inherit; font-size: .9rem; color: var(--fg); background: var(--soft);
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15); cursor: pointer;
+  }
+  .lang-block[data-lang="en"] { font-family: system-ui, "Segoe UI", Roboto, sans-serif; }
+  header.top { grid-area: top; padding-right: 96px; }
+  nav.toc { grid-area: toc; }
+  main { grid-area: main; min-width: 0; }
+  @media (min-width: 1100px) {
+    .layout {
+      max-width: 1120px; column-gap: 48px;
+      grid-template-columns: 260px minmax(0, 780px);
+      grid-template-areas: "toc top" "toc main";
+    }
+    .toc-toggle, .toc-backdrop { display: none; }
+    .layout {
+      align-items: start;
+    }
+    nav.toc {
+      position: sticky; top: 16px; margin: 0;
+      max-height: calc(100vh - 32px); overflow-y: auto;
+    }
+  }
+  h1 { font-size: 1.9rem; line-height: 1.3; margin: 0 0 8px; }
+  h2 { font-size: 1.5rem; margin: 56px 0 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.2rem; margin: 36px 0 8px; }
+  h4 { font-size: 1.05rem; margin: 28px 0 6px; }
+  p, li { margin: 8px 0; }
+  a { color: var(--accent); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; background: var(--code); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .lead { color: var(--muted); margin: 0 0 24px; }
+  nav.toc { background: var(--soft); border-radius: 8px; padding: 12px 16px; margin: 24px 0; font-size: .92rem; line-height: 1.6; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  nav.toc ul { margin: 4px 0; padding-left: 18px; list-style: none; }
+  nav.toc > ul { padding-left: 0; }
+  nav.toc ul ul { font-size: .93em; margin: 0 0 6px; }
+  nav.toc li { margin: 2px 0; }
+  [id] { scroll-margin-top: 16px; }
+  .table-wrap { overflow-x: auto; margin: 14px 0; }
+  table { border-collapse: collapse; font-size: .95rem; font-variant-numeric: tabular-nums; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 14px 6px 0; text-align: left; vertical-align: top; }
+  th { font-weight: 600; }
+  td.num, th.num { text-align: right; padding-left: 14px; }
+  figure { margin: 18px 0; }
+  figure img { display: block; max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  figure.board img { background: #272727; }
+  figure.narrow img { max-width: min(480px, 100%); }
+  .math { text-align: center; margin: 14px 0; font-size: 1.15em; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+  .note { color: var(--muted); }
+  .refs p { padding-left: 2.2em; text-indent: -2.2em; }
+  .refs .use { display: block; text-indent: 0; color: var(--muted); }
+  ol.steps { padding-left: 22px; }
+</style>
+</head>
+<body>
+<button class="toc-toggle" type="button" aria-expanded="false">☰ 目录</button>
+<button class="lang-toggle" type="button" lang="en">English</button>
+<div class="toc-backdrop"></div>
+<div class="lang-block" data-lang="zh" lang="zh-CN">
+<div class="layout">
+<header class="top">
+<h1>基于 ERP CORE N170 单被试脑电的人脸与汽车知觉时间分辨解码</h1>
+</header>
+
+<nav class="toc" aria-label="目录">
+  <strong>目录</strong>
+  <ul>
+    <li><a href="#step1">Step 1：认识数据</a></li>
+    <li><a href="#step2">Step 2：预处理</a>
+      <ul>
+        <li><a href="#s2-eog">双极眼电</a></li>
+        <li><a href="#s2-avgref">平均参考</a></li>
+        <li><a href="#s2-filter">粗滤波（高通、低通）</a></li>
+        <li><a href="#s2-ica">ICA 去眼电</a></li>
+        <li><a href="#s2-epoch">切 epoch 与基线校正</a></li>
+        <li><a href="#s2-reject">细滤波（剔除 epoch）</a></li>
+      </ul>
+    </li>
+    <li><a href="#step3">Step 3：传统 ERP（质量关卡）</a>
+      <ul>
+        <li><a href="#s3-1">第 1 步：把 trial 分成两堆</a></li>
+        <li><a href="#s3-2">第 2 步：每一堆取平均</a></li>
+        <li><a href="#s3-3">第 3 步：在 PO8、PO7 上画图，加一条「脸减车」</a></li>
+        <li><a href="#s3-4">第 4 步：算一个数，再画一圈误差范围</a></li>
+        <li><a href="#s3-5">第 5 步：画地形图</a></li>
+        <li><a href="#s3-6">第 6 步：稳健性检查</a></li>
+      </ul>
+    </li>
+    <li><a href="#step4">Step 4：time-resolved decoding</a>
+      <ul>
+        <li><a href="#s4-pre">预处理</a></li>
+        <li><a href="#s4-m1">训练方法1</a></li>
+        <li><a href="#s4-m2">训练方法2</a></li>
+        <li><a href="#s4-record">数据记录</a></li>
+        <li><a href="#s4-tools">工具调用与程序编写</a></li>
+        <li><a href="#s4-stats">统计</a></li>
+      </ul>
+    </li>
+    <li><a href="#refs">参考文献</a>
+      <ul>
+        <li><a href="#refs-sw">软件</a></li>
+        <li><a href="#refs-data">数据</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+
+<main>
+<!-- ============================== Step 1 ============================== -->
+<h2 id="step1">Step 1：认识数据</h2>
+<ul>
+  <li>用 <code>hu-neuro-pipeline</code> 包下载 ERP CORE N170 任务的一个被试（sub-001），数据来自 OSF 项目 pfde9；</li>
+  <li>读进 MNE，以下是读到的通道、采样率、时长
+    <p><code>data/step2_eog-raw.fif</code> 的基本信息如下：采样率 1024 Hz，时长 683.0 秒（约 11 分 23 秒），共 699,392 个采样点，35 个通道。</p>
+    <p><strong>通道（30 个 EEG + 5 个 EOG）</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>通道</th><th>类型</th><th>#</th><th>通道</th><th>类型</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>FP1</td><td>EEG</td><td>19</td><td>F8</td><td>EEG</td></tr>
+        <tr><td>2</td><td>F3</td><td>EEG</td><td>20</td><td>FC4</td><td>EEG</td></tr>
+        <tr><td>3</td><td>F7</td><td>EEG</td><td>21</td><td>FCz</td><td>EEG</td></tr>
+        <tr><td>4</td><td>FC3</td><td>EEG</td><td>22</td><td>Cz</td><td>EEG</td></tr>
+        <tr><td>5</td><td>C3</td><td>EEG</td><td>23</td><td>C4</td><td>EEG</td></tr>
+        <tr><td>6</td><td>C5</td><td>EEG</td><td>24</td><td>C6</td><td>EEG</td></tr>
+        <tr><td>7</td><td>P3</td><td>EEG</td><td>25</td><td>P4</td><td>EEG</td></tr>
+        <tr><td>8</td><td>P7</td><td>EEG</td><td>26</td><td>P8</td><td>EEG</td></tr>
+        <tr><td>9</td><td>P9</td><td>EEG</td><td>27</td><td>P10</td><td>EEG</td></tr>
+        <tr><td>10</td><td>PO7</td><td>EEG</td><td>28</td><td>PO8</td><td>EEG</td></tr>
+        <tr><td>11</td><td>PO3</td><td>EEG</td><td>29</td><td>PO4</td><td>EEG</td></tr>
+        <tr><td>12</td><td>O1</td><td>EEG</td><td>30</td><td>O2</td><td>EEG</td></tr>
+        <tr><td>13</td><td>Oz</td><td>EEG</td><td>31</td><td>HEOG_left</td><td>EOG</td></tr>
+        <tr><td>14</td><td>Pz</td><td>EEG</td><td>32</td><td>HEOG_right</td><td>EOG</td></tr>
+        <tr><td>15</td><td>CPz</td><td>EEG</td><td>33</td><td>VEOG_lower</td><td>EOG</td></tr>
+        <tr><td>16</td><td>FP2</td><td>EEG</td><td>34</td><td>HEOG（左 − 右）</td><td>EOG</td></tr>
+        <tr><td>17</td><td>Fz</td><td>EEG</td><td>35</td><td>VEOG（VEOG_lower − FP2）</td><td>EOG</td></tr>
+        <tr><td>18</td><td>F4</td><td>EEG</td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </li>
+  <li>读 <code>events.tsv</code> 和 <code>task-N170_events.json</code>，以下是每个 event code 代表什么的表格：
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>编号</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>1–40</td><td>人脸</td></tr>
+        <tr><td>41–80</td><td>汽车</td></tr>
+        <tr><td>101–140</td><td>打乱的人脸</td></tr>
+        <tr><td>141–180</td><td>打乱的汽车</td></tr>
+        <tr><td>201</td><td>按键反应：正确</td></tr>
+        <tr><td>202</td><td>按键反应：错误</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </li>
+</ul>
+
+<!-- ============================== Step 2 ============================== -->
+<h2 id="step2">Step 2：预处理</h2>
+<p>大致按 ERP CORE 官方流程，做了简化</p>
+
+<ol class="steps">
+  <li id="s2-eog">
+    <p>把 3 个眼电通道标成 EOG 类型，计算双极眼电：HEOG = 左 − 右，VEOG = VEOG_lower − FP2，以方便后续剔除伪迹（为什么要算出双极眼电以及如何算出，链接HTML3）</p>
+    <p>输出文件是 <code>data/step2_eog-raw.fif</code>。</p>
+  </li>
+  <li id="s2-avgref">
+    <p>设置平均参考值：电压表示永远是“相对于某个标准电压的电压差”，在本次数据集中，由于实验人员使用的Biosemi记录设备没有真正的参考电压，只有一个多余的电极作为参考。所以需要人为另外选择一个参考电压。我们选择的是：在每一个时间点，先算出 30 个头皮电极的平均电压，再让每个电极都减掉这个平均：</p>
+    <div class="math"><math display="block">
+      <msubsup><mi>x</mi><mi>i</mi><mtext>新</mtext></msubsup><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>=</mo>
+      <msub><mi>x</mi><mi>i</mi></msub><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>−</mo>
+      <mfrac><mn>1</mn><mn>30</mn></mfrac>
+      <munderover><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mn>30</mn></munderover>
+      <msub><mi>x</mi><mi>j</mi></msub><mo>(</mo><mi>t</mi><mo>)</mo>
+    </math></div>
+    <ul>
+      <li>xᵢ(t)：第 i 个电极在时间 t 的原始电压；</li>
+      <li>求和那一项：同一时刻 30 个头皮电极的平均。</li>
+    </ul>
+    <p>做完之后，每个时间点上 30 个电极加起来正好是 0。每个电极的数值表示的就是"<strong>比全头平均高还是低</strong>"。顺带的好处是，所有电极共有的噪声（比如之前看到的 60 Hz 干扰）会被减掉一大块。<em>注意：我们没有把EOP数据算进去</em></p>
+    <p>输出文件：<code>data/step2_avgref-raw.fif</code></p>
+    <figure><img src="ERP_notes_img/step2_avgref_before_after.jpg" alt="平均参考前（左）和后（右）的原始波形" loading="lazy"></figure>
+    <p>（观察到，左侧原先在12.5s-15s的共同噪声已经在右图中明显被处理掉了）</p>
+  </li>
+  <li id="s2-filter">
+    <p>粗滤波：</p>
+    <p>1.采用0出.1Hz的高通，为了去掉汗、皮肤电位、电极慢慢变化造成的漂移（EOG数据也参与）</p>
+    <p>实际效果如下：</p>
+    <p>EEG power by frequency band (µV²/Hz)</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Band</th><th class="num">Before</th><th class="num">After</th><th class="num">Change</th></tr></thead>
+      <tbody>
+        <tr><td>0.01–0.05 Hz (drift)</td><td class="num">31,493.54</td><td class="num">1,392.11</td><td class="num"><strong>−95.6%</strong></td></tr>
+        <tr><td>0.05–0.1 Hz (transition band)</td><td class="num">10,612.89</td><td class="num">6,813.60</td><td class="num">−35.8%</td></tr>
+        <tr><td>0.1–1 Hz</td><td class="num">935.33</td><td class="num">933.49</td><td class="num">−0.2%</td></tr>
+        <tr><td>1–4 Hz (δ)</td><td class="num">14.32</td><td class="num">14.26</td><td class="num">−0.4%</td></tr>
+        <tr><td>4–8 Hz (θ)</td><td class="num">1.58</td><td class="num">1.57</td><td class="num">−0.5%</td></tr>
+        <tr><td>8–13 Hz (α)</td><td class="num">5.99</td><td class="num">5.99</td><td class="num">0.0%</td></tr>
+        <tr><td>13–30 Hz (β)</td><td class="num">2.05</td><td class="num">2.05</td><td class="num">0.0%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>结果存为 <code>data/step2_hp-raw.fif</code></p>
+    <p>2.再采用30Hz的低通，为了去掉60Hz交流电的人体感应信号以及一部分肌电。（关于滤波原理与具体操作参考HTML2，这里面原理部分是claude写的，我没学会）（EOG数据也参与）</p>
+    <p>实际效果如下：</p>
+    <p><strong>EEG 各频段功率（µV²/Hz）</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>频段</th><th class="num">前</th><th class="num">后</th><th class="num">变化</th></tr></thead>
+      <tbody>
+        <tr><td>1–4 Hz</td><td class="num">13.29</td><td class="num">13.26</td><td class="num">−0.3%</td></tr>
+        <tr><td>4–8 Hz</td><td class="num">1.513</td><td class="num">1.510</td><td class="num">−0.2%</td></tr>
+        <tr><td>8–13 Hz</td><td class="num">5.493</td><td class="num">5.482</td><td class="num">−0.2%</td></tr>
+        <tr><td>13–20 Hz</td><td class="num">1.358</td><td class="num">1.355</td><td class="num">−0.2%</td></tr>
+        <tr><td>20–30 Hz</td><td class="num">2.724</td><td class="num">2.721</td><td class="num">−0.1%</td></tr>
+        <tr><td>30–34 Hz（过渡带开始）</td><td class="num">3.319</td><td class="num">2.292</td><td class="num">−30.9%</td></tr>
+        <tr><td>34–38 Hz（过渡带）</td><td class="num">3.458</td><td class="num">0.135</td><td class="num">−96.1%</td></tr>
+        <tr><td>38–45 Hz</td><td class="num">3.094</td><td class="num">0.0004</td><td class="num">≈ −100%</td></tr>
+        <tr><td>45–55 Hz</td><td class="num">2.821</td><td class="num">0.0002</td><td class="num">≈ −100%</td></tr>
+        <tr><td>55–65 Hz</td><td class="num">2.357</td><td class="num">0.0002</td><td class="num">≈ −100%</td></tr>
+        <tr><td>65–100 Hz</td><td class="num">1.448</td><td class="num">0.0001</td><td class="num">≈ −100%</td></tr>
+        <tr><td>100–200 Hz</td><td class="num">0.438</td><td class="num">0.00003</td><td class="num">≈ −100%</td></tr>
+        <tr><td>60 Hz 这一个频点</td><td class="num">2.355</td><td class="num">0.0002</td><td class="num">≈ −100%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>结果继续存为 <code>data/step2_hp-raw.fif</code></p>
+    <p>此时我们发现Oz通道的标准差 只降了 0.2%，标准差仍然约 100 µV，是旁边 O1、O2（约 19 µV）的 5 倍。这说明它的噪声集中在低频，不是肌电，更像电极接触不好造成的跳动或漂移。我们用功率谱来看是否存在问题</p>
+    <figure><img src="ERP_notes_img/step2_psd_Oz_O1_O2.png" alt="O1、Oz、O2 的功率谱（0.1 Hz 高通后）" loading="lazy"></figure>
+    <p>可以发现，Oz在低频处明显高于其他两个电极，提示很有可能存在电极接触不良。N170 的脸–车差异主要在两侧枕颞区：PO7、PO8、P7、P8、P9、P10。Step 3 的质量关卡看的是 PO8 和 PO7，完全用不到 Oz。所以我们将它标记为坏导。重新进行上面两次滤波，存储为：<code>step2_eog-raw.fif</code>、<code>step2_avgref-raw.fif</code>、<code>step2_hp-raw.fif</code>、<code>step2_lp-raw.fif</code></p>
+    <p id="s2-ica">3.采取ICA滤波：也就是先找出眼电成分，从数据里减掉</p>
+    <figure><img src="ERP_notes_img/step2_ica_components_1.png" alt="ICA 成分地形图 ICA000–ICA019" loading="lazy"></figure>
+    <figure><img src="ERP_notes_img/step2_ica_components_2.png" alt="ICA 成分地形图 ICA020–ICA027" loading="lazy"></figure>
+    <p>发现ICA000和 VEOG 的相关性 0.94，峰度 12，判断为眨眼的眼电；ICA003和 HEOG 的相关性 0.77，阶跃和 HEOG 同步，判断为水平眼动。</p>
+    <p>去掉这些成分之后，结果保存为<code>data/step2_ica-raw.fif</code>。去除的表现如下：</p>
+    <figure><img src="ERP_notes_img/step2_ica_blinks_before_after.png" alt="FP1、FP2 上 152 次眨眼的平均，ICA 前后" loading="lazy"></figure>
+    <p>ICA 结果存为 <code>data/step2_ica-ica.fif</code></p>
+    <figure><img src="ERP_notes_img/step2_ica_before_after.jpg" alt="ICA 前（灰）后（紫）的波形，40 s 和 46 s 左右的眼电被去除" loading="lazy"></figure>
+    <p>（可以发现40s&amp;46s左右眼电很大，当然，已经被去除）</p>
+  </li>
+  <li value="5" id="s2-epoch">
+    <p>将每个刺激前的200ms-刺激后的800ms的波截取出来，切作一个epoch。每个 epoch 一开始的电压水平都不太一样，有的偏高几 μV，有的偏低，这是残留的慢漂移，和刺激无关。消除它做法是：每个 trial、每个通道，算出 −200 到 0 ms 的平均电压，然后从整段里减掉它。</p>
+    <div class="math"><math display="block">
+      <msub><mi>x</mi><mtext>校正后</mtext></msub><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>=</mo>
+      <mi>x</mi><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>−</mo>
+      <msub><mover><mi>x</mi><mo>¯</mo></mover><mtext>基线</mtext></msub>
+    </math></div>
+    <ul>
+      <li>x(t)：这个 trial 在这个通道上、时间 t 的电压；</li>
+      <li>x̄_基线：同一个 trial、同一个通道，−200 到 0 ms 的平均电压。</li>
+    </ul>
+    <p>校正之后，每个 trial 刺激前的平均都是 0，刺激后的数值表示"相对于刺激前，电压变化了多少"。</p>
+    <p>这一步我们留在粗滤波之后做，因为有的滤波核长，可能会跨epoch。</p>
+  </li>
+</ol>
+
+<ol class="steps" start="3">
+  <li id="s2-reject">
+    <p>细滤波：剔除符合以下特征的epoch：</p>
+    <p>1.某个头皮电极的电压在这一秒里突然变得很大，远远超出正常脑电的范围。<br>
+    这往往是被试动了一下、咬牙、咳嗽、电极松动等等。这些伪迹比脑电大得多，留着会严重扭曲平均波形，也会干扰 decoding。这个阈值需要根据每个被试调整，毕竟有些人头皮薄，有些人头皮厚，需要结合具体的录像情况判断该伪迹是否真的是伪迹。阈值不会严于三个标准差,同时阈值需要大于100 µV</p>
+    <p>2.用 Step 2 第 1 条算出的双极眼电。在刺激呈现的时间段里，VEOG 出现大的尖峰说明在眨眼，HEOG 出现明显的阶跃（突然升高或降低）说明眼睛转了。超过阈值就删。因为这往往说明被试没有看清楚照片或者眼动信号足以干扰ERP记录。</p>
+    <p>3.行为上有问题的epoch：N170 任务里，被试每看到一张图都要按键判断：是物体（人脸或汽车），还是纹理（打乱后的图）。</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>情况</th><th>为什么要删</th></tr></thead>
+      <tbody>
+        <tr><td>答错了</td><td>说明被试这一次可能走神了，或者没认真看，大脑处理得不完整</td></tr>
+        <tr><td><strong>反应时短于 200 ms</strong></td><td>太快了，人不可能这么快看清并判断，多半是提前乱按</td></tr>
+        <tr><td><strong>反应时长于 1000 ms</strong></td><td>太慢了，可能在发呆或分心</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>200–1000 ms 这个范围是 ERP CORE 官方用的。</p>
+    <p><strong>剔除结果是删掉 92 个、保留 228 个。</strong>四类分别剩：face 60、car 48、scrambled_face 62、scrambled_car 58。</p>
+  </li>
+</ol>
+
+<!-- ============================== Step 3 ============================== -->
+<h2 id="step3">Step 3：传统 ERP（质量关卡）</h2>
+
+<h4 id="s3-1">第 1 步：把 trial 分成两堆</h4>
+<p>从 <code>step2_clean-epo.fif</code> 里取出完整的脸（60 个）和完整的车（48 个）。</p>
+<p>我们只比较脸和车，打乱的图这一步用不上。</p>
+
+<h4 id="s3-2">第 2 步：每一堆取平均</h4>
+<p>在每个电极上，把 60 个脸 trial 的波形取平均，得到「看脸的平均波形」；车也一样。</p>
+<p>单个 trial 里噪声比大脑反应大得多。平均以后，理论上每次时机都不一样的噪声互相抵消，每次都在同一时刻出现的反应就留下来了。</p>
+<figure><img src="ERP_notes_img/step3_car_average.png" alt="车的平均波形（n = 48），30 个 EEG 通道" loading="lazy"></figure>
+<figure><img src="ERP_notes_img/step3_face_average.png" alt="脸的平均波形（n = 60），30 个 EEG 通道" loading="lazy"></figure>
+<p><strong>平均确实压低了噪声</strong>：刺激前的 −200 到 0 ms 还没有大脑反应，这段的波动可以当作噪声的大小。</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>类别</th><th class="num">单个 trial 的噪声</th><th class="num">平均后</th><th class="num">缩小倍数</th><th class="num">理论值 √n</th></tr></thead>
+  <tbody>
+    <tr><td>脸（60 个）</td><td class="num">8.19 µV</td><td class="num">1.26 µV</td><td class="num">6.5 倍</td><td class="num">7.7</td></tr>
+    <tr><td>车（48 个）</td><td class="num">8.31 µV</td><td class="num">1.50 µV</td><td class="num">5.5 倍</td><td class="num">6.9</td></tr>
+  </tbody>
+</table>
+</div>
+<p>如果噪声每次都完全独立、随机，平均 n 次会缩小 √n 倍。实际比理论值略少，说明还有一部分噪声不是完全随机的，比如在一段时间里持续存在的 α 波或慢漂移，平均也消不掉。</p>
+
+<h4 id="s3-3">第 3 步：在 PO8、PO7 上画图，加一条「脸减车」</h4>
+<p>画三条线：看脸的平均、看车的平均，以及两者相减得到的差异波。</p>
+<p>110–150 ms 附近，文献上（3）来说差异波应该往下（负的），也就是脸比车低。注意，脸和车两条线可能都在 0 以上，这没关系，看的是脸比车低。</p>
+
+<h4 id="s3-4">第 4 步：算一个数，再画一圈误差范围</h4>
+<p>算出差异波在 110–150 ms 的平均值，同时在差异波外面画一圈阴影，表示误差范围。</p>
+<ul>
+  <li>一个数方便记录，也方便和后面第 6 步比较。</li>
+  <li>单个被试噪声大，一条线可能是碰巧。阴影整个落在 0 以下，才说明差异不是噪声造成的。</li>
+  <li>110–150 ms 是事先定好的，不管结果怎样都不改。<br>实际数据如下：</li>
+</ul>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>电极</th><th class="num">脸 − 车（110–150 ms）</th><th class="num">95% 置信区间</th></tr></thead>
+  <tbody>
+    <tr><td>PO7</td><td class="num">−1.65 µV</td><td class="num">[−4.93, 1.63]</td></tr>
+    <tr><td>PO8</td><td class="num">+0.37 µV</td><td class="num">[−2.80, 3.53]</td></tr>
+  </tbody>
+</table>
+</div>
+<figure><img src="ERP_notes_img/step3_diff_PO7_PO8.png" alt="PO7 和 PO8 上的脸、车平均波形和差异波，灰色为差异波的 95% 置信区间" loading="lazy"></figure>
+<p>由于95%置信区间都跨过了0，所以差异波并不显著。观察到这个差异波的摆动很有节律，推测可能是一部分α波的残留。但是鉴于N170本身就会落在α波的频段里面，所以再次滤波的想法被否决了。</p>
+
+<h4 id="s3-5">第 5 步：画地形图</h4>
+<p>每个电极都算一次「脸减车在 110–150 ms 的平均」，把这 30 个数画在头上。</p>
+<p>根据文献预计差异出现在 N170 该出现的地方，也就是后脑两侧（1）。如果最负的地方在前额，可能是眼电没去干净（2）；如果只集中在一个电极，可能是那个电极有噪声。</p>
+<figure class="narrow"><img src="ERP_notes_img/step3_topo_diff.png" alt="脸减车在 110–150 ms 的地形图" loading="lazy"></figure>
+<p>这个地形图没有明显的不对，但是最负处和文献有偏差</p>
+
+<h4 id="s3-6">第 6 步：稳健性检查</h4>
+<p>滤波会改变波形，而 30 Hz 这个数是我们自己选的。要确认看到的效应来自大脑，而不是来自这个选择。</p>
+<p>我们把 30 Hz 低通换成 40 Hz，再换成不做低通，其他完全不变（同一个 ICA、同一批删掉的 trial），各画一次 PO8 的差异波，三条叠在一起，再各算一次 110–150 ms 的平均值。</p>
+<p>结果如下：</p>
+<figure><img src="ERP_notes_img/step3_filter_PO8.png" alt="三种低通设置下 PO8 的差异波" loading="lazy"></figure>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>低通设置</th><th class="num">PO8 脸 − 车（110–150 ms）</th></tr></thead>
+  <tbody>
+    <tr><td>30 Hz（原来的）</td><td class="num">+0.37 µV</td></tr>
+    <tr><td>40 Hz</td><td class="num">−0.19 µV</td></tr>
+    <tr><td>不做低通</td><td class="num">−0.23 µV</td></tr>
+  </tbody>
+</table>
+</div>
+<p><strong>三条线基本重合</strong>：不做低通只是多了很多高频毛刺，整体的起伏完全一样。</p>
+<p><strong>三个数都接近 0</strong>：彼此只差约 0.6 µV，而第 4 步里 PO8 的 95% 置信区间是约 ±3 µV，这点差别远小于噪声。</p>
+<p><strong>结论没变</strong>：三种设置下，PO8 在 110–150 ms 都没有可靠的"脸比车低"。</p>
+<p><strong>但正负号会翻转</strong>：30 Hz 是正的，40 Hz 和不低通是负的。这说明这个接近 0 的数本身不稳定，不能把它读成"脸更正"或"脸更负"，只能说"没有差异"。</p>
+<p>稳健性检查基本通过</p>
+
+<!-- ============================== Step 4 ============================== -->
+<h2 id="step4">Step 4：time-resolved decoding</h2>
+
+<h3 id="s4-pre">预处理</h3>
+<p>把 epoch 从 1024 Hz 降到 100 Hz。每个 epoch 从 −200 到 800 ms，降完是 100 个时间点，每个点相隔 10 ms。由于之前已经做过低通处理，所以50hz以上的信息已经均不保留，100hz这个数的选取是符合香农采样定理的。</p>
+
+<h3 id="s4-m1">训练方法1：</h3>
+<figure class="board"><img src="ERP_notes_img/method1_sketch_1.jpg" alt="手绘：原始数据，脸和车各有很多个 trial，每个 trial 有 30 多个电极的 EEG" loading="lazy"></figure>
+<figure class="board"><img src="ERP_notes_img/method1_sketch_2.jpg" alt="手绘：每 4 个同类 trial 平均成一条 trace" loading="lazy"></figure>
+<figure class="board"><img src="ERP_notes_img/method1_sketch_3.jpg" alt="手绘：每个时间点上，11 对 trace 用来训练 SVM，1 对用来测试" loading="lazy"></figure>
+<p>在这个方法中，一个 SVM 只被输入某个时间点上 30 个电极的数据进行训练（如图）：训练用 11 对 trace，也就是 22 个 30 维向量；剩下 1 对（2 个向量）用来测试。交叉验证（留一对，共 12 折）后，得到该时间点的 12 个 SVM，他们的准确率平均为一个值。我们一共有 100 个时间点，最后得到100个这样的值。</p>
+
+<h3 id="s4-m2">训练方法2：</h3>
+<figure class="board"><img src="ERP_notes_img/method2_sketch.jpg" alt="手绘：把一段时间内各电极的数据接成一个向量，11 对 trace 的向量用来训练，1 对用来测试，每个时间段训练 12 个 SVM" loading="lazy"></figure>
+<p>这个方法中，我们需要将某一个时间段内的electrode的数据合并为一个60维的vector,然后投入22个这样的60维数据进行训练。这样的好处是能够学习到波形变化趋势，信息可能较前一种方法更多。</p>
+
+<h3 id="s4-record">数据记录</h3>
+<p>SVM的准确率不能直接拿 50% 来比，原因有两个：一是 2000 条曲线共用同一份数据，这份数据自己的噪声平均不掉；二是样本很少时，留一法交叉验证的瞎猜水平本身可能偏离 50%（比如说噪声没有消除干净，导致classifier学到了一些歪门邪道的小技巧来判断）。所以要用置换检验，算出这套流程在「脸和车没有区别」时，准确率实际是什么样子，再拿真实结果和它比。</p>
+<p><strong>真实曲线</strong>：由于脸的 trial 数（60）多于车的 trial 数（48），我们随机抽取 48 个脸的 trial 进入数据集，使脸的数据量和车齐平。这个抽取我们做 <strong>20 次</strong>。我们还要把每 4 个同类 trial 平均成一条 trace 来减少噪声。每次抽取后，把每类的 48 个 trial 随机打乱、每 4 个一组，切成 12 组；这样的随机分组每次抽取后做 <strong>100 次</strong>。所以我们一共得到 20 × 100 = <strong>2000 组</strong>数据。每一组数据都按上述分析得到一条"准确率随时间变化"的曲线，一共 2000 条。把这 2000 条曲线在每个时间点上取平均，就是<strong>真实曲线</strong>。</p>
+<p><strong>零分布</strong>：绘制零分布时，我们打乱 EEG 信号和图片内容（脸/车标签）的对应关系。这时训练出来的 SVM 理论上完全无法通过 EEG 信号预测图片内容，我们称它为瞎猜 SVM。打乱后，被标为脸的仍是 60 个 trial、被标为车的仍是 48 个，只是里面真脸和真车混在了一起。</p>
+<p>每打乱一次（称为一次<strong>置换</strong>），就按和真实曲线一样的步骤算一条<strong>瞎猜曲线</strong>，只是抽样数量少一些：抽脸同样做 <strong>20 次</strong>，但每次抽取后的随机分组只做 <strong>10 次</strong>，得到 20 × 10 = <strong>200 条</strong>曲线，取平均得到 1 条瞎猜曲线（共 1200 × 200 = 24 万个 SVM）。</p>
+<p>这样的置换一共做 <strong>1000 次</strong>，得到 <strong>1000 条</strong>瞎猜曲线，这就是<strong>零分布</strong>：每个时间点上都有 1000 个瞎猜准确率。</p>
+<p>（瞎猜曲线每条只平均 200 条，比真实曲线的 2000 条少，所以零分布会更宽一些，判断偏保守：只会让显著更难出现，不会制造假阳性。这样做是为了在可接受的时间里完成 1000 次置换。）</p>
+
+<h3 id="s4-tools">工具调用与程序编写</h3>
+<p>由于现在大多数SVM模型都用于应对大维度向量训练或者多样本训练，而本次实验中收到participant本身只能做这些次trial的限制，向量的维度不大，样本不多，但是重复次数奇大。如果单纯的使用现有的库，全部数据跑完需要整个晚上。所以我让claude帮我按照libsvm 的源码重新写，输出为<code>step6_gpu_lib.py</code>，仅调用了pytorch库。我们对于两种方法均随机选择部分数据与sklearn的计算结果进行比较，两者的计算结果99.98% 的预测一致，差别来自浮点运算顺序</p>
+<p>运行方法1的代码为<code>step6_main.py</code> 和 <code>step6_permutation.py</code></p>
+<p>运行方法2的代码为<code>step8_window.py</code></p>
+
+<h3 id="s4-stats">统计</h3>
+<p>通过对比瞎猜曲线和置换检验曲线，我们得以观察ERG信号里面是否有判断车/脸的电信号。</p>
+<p>由于我们需要多次进行检验，所以机械地定义一个阈值p是不足够的，我们还需要规定一个false discovery rate来解决假阳性问题。以下是对方法的简介。</p>
+<figure class="board"><img src="ERP_notes_img/fdr_sketch.jpg" alt="手写：p 值的定义 p = (1 + #{Tb ≥ Tobs}) / (1 + B)，以及 FDR 的计算步骤" loading="lazy"></figure>
+<p>在本次统计中，我们将FDR定为0.05</p>
+<p>方法一：没有任何一次检验通过了标准，即使在图像上看似在N170附近有一个高于瞎猜曲线的峰。我们的检验中最低的FDR为0.09，也就是说假阳性率为9%，这无法达到统计学上的显著。</p>
+<p>方法二：150–180 ms 有 4 个连续的窗口通过了 FDR 校正。显著的 4 个窗口合起来，覆盖的数据范围是 130–200 ms</p>
+
+<!-- ============================== References ============================== -->
+<h2 id="refs">参考文献</h2>
+<div class="refs">
+<p>（1）Bentin, S., Allison, T., Puce, A., Perez, E., &amp; McCarthy, G. (1996). Electrophysiological studies of face perception in humans. <em>Journal of Cognitive Neuroscience, 8</em>(6), 551–565.
+  <span class="use">第一次报道 N170，发现它在后颞区（当时叫 T5/T6，大致是现在的 P7/P8）最大，右侧更强。</span></p>
+<p>（2）Luck, S. J. (2014). <em>An Introduction to the Event-Related Potential Technique</em> (2nd ed.). MIT Press.
+  <span class="use">讲伪迹剔除和校正的那一章。</span></p>
+<p>（3）Kappenman, E. S., Farrens, J. L., Zhang, W., Stewart, A. X., &amp; Luck, S. J. (2021). ERP CORE: An open resource for human event-related potential research. <em>NeuroImage, 225</em>, 117465.
+  <span class="use">把 N170 定义为 PO8 上「脸减车」差异波在 110–150 ms 的平均幅值，所有被试的总平均是负的，峰值在 131 ms 左右。我们的 110–150 ms 窗口、PO8 电极、131 ms 这个参考值，都出自这篇。</span></p>
+<p>（4）Nemrodov, D., Niemeier, M., Patel, A., &amp; Nestor, A. (2018). The neural dynamics of facial identity processing: Insights from EEG-based pattern analysis and image reconstruction. <em>eNeuro, 5</em>(1), ENEURO.0358-17.2018. <a href="https://doi.org/10.1523/ENEURO.0358-17.2018">https://doi.org/10.1523/ENEURO.0358-17.2018</a>
+  <span class="use">用于：trace 平均、线性 SVM、留一交叉验证、置换检验 + FDR、时间窗解码（方法 2）。</span></p>
+<p>（5）Benjamini, Y., &amp; Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. <em>Journal of the Royal Statistical Society: Series B, 57</em>(1), 289–300. <a href="https://doi.org/10.1111/j.2517-6161.1995.tb02031.x">https://doi.org/10.1111/j.2517-6161.1995.tb02031.x</a>
+  <span class="use">用于：FDR 校正。</span></p>
+<p>（6）Phipson, B., &amp; Smyth, G. K. (2010). Permutation p-values should never be zero: Calculating exact p-values when permutations are randomly drawn. <em>Statistical Applications in Genetics and Molecular Biology, 9</em>(1), Article 39. <a href="https://doi.org/10.2202/1544-6115.1585">https://doi.org/10.2202/1544-6115.1585</a>
+  <span class="use">用于：p 值公式的分子分母为什么都加 1。</span></p>
+<p>（7）Hyvärinen, A. (1999). Fast and robust fixed-point algorithms for independent component analysis. <em>IEEE Transactions on Neural Networks, 10</em>(3), 626–634. <a href="https://doi.org/10.1109/72.761722">https://doi.org/10.1109/72.761722</a>
+  <span class="use">用于：Step 2 的 ICA（FastICA）。</span></p>
+<p>（8）Chang, C.-C., &amp; Lin, C.-J. (2011). LIBSVM: A library for support vector machines. <em>ACM Transactions on Intelligent Systems and Technology, 2</em>(3), Article 27. <a href="https://doi.org/10.1145/1961189.1961199">https://doi.org/10.1145/1961189.1961199</a>
+  <span class="use">用于：SVM 求解器（sklearn 的底层，GPU 版照它的算法重写）。</span></p>
+<p>（9）Fan, R.-E., Chen, P.-H., &amp; Lin, C.-J. (2005). Working set selection using second order information for training support vector machines. <em>Journal of Machine Learning Research, 6</em>, 1889–1918.
+  <span class="use">用于：GPU 版 SMO 里"二阶选工作集"的方法。</span></p>
+
+<h4 id="refs-sw">软件</h4>
+<p>（10）Gramfort, A., Luessi, M., Larson, E., Engemann, D. A., Strohmeier, D., Brodbeck, C., Goj, R., Jas, M., Brooks, T., Parkkonen, L., &amp; Hämäläinen, M. (2013). MEG and EEG data analysis with MNE-Python. <em>Frontiers in Neuroscience, 7</em>, 267. <a href="https://doi.org/10.3389/fnins.2013.00267">https://doi.org/10.3389/fnins.2013.00267</a>（本项目使用 MNE 1.13.2）</p>
+<p>（11）Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011). Scikit-learn: Machine learning in Python. <em>Journal of Machine Learning Research, 12</em>, 2825–2830.（本项目使用 scikit-learn 1.9.1）</p>
+<p>（12）Paszke, A., Gross, S., Massa, F., et al. (2019). PyTorch: An imperative style, high-performance deep learning library. In <em>Advances in Neural Information Processing Systems 32</em> (pp. 8024–8035).（本项目使用 PyTorch 2.11.0）</p>
+<p>（13）Harris, C. R., Millman, K. J., van der Walt, S. J., et al. (2020). Array programming with NumPy. <em>Nature, 585</em>, 357–362. <a href="https://doi.org/10.1038/s41586-020-2649-2">https://doi.org/10.1038/s41586-020-2649-2</a></p>
+<p>（14）hu-neuro-pipeline（版本 0.9.0）[软件]. <a href="https://github.com/alexenge/hu-neuro-pipeline">https://github.com/alexenge/hu-neuro-pipeline</a>
+  <span class="use">用于：下载数据。作者和推荐的引用格式请到它的 GitHub 页面核对。</span></p>
+
+<h4 id="refs-data">数据</h4>
+<p>（15）ERP CORE N170 数据集，Open Science Framework 项目 pfde9. <a href="https://osf.io/pfde9/">https://osf.io/pfde9/</a>（只用了被试 sub-001）</p>
+</div>
+
+<p class="note">本项目的代码由 Claude（Anthropic）协助编写，部分分析设计采纳了 Claude 的建议</p>
+
+</main>
+</div>
+</div>
+
+<div class="lang-block" data-lang="en" lang="en" hidden>
+<div class="layout">
+<header class="top">
+<h1>Time-Resolved Decoding of Face and Car Perception from Single-Subject EEG in ERP CORE N170</h1>
+<p class="note">(Translated by Claude Opus 5.5)</p>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#en-step1">Step 1: Getting to know the data</a></li>
+    <li><a href="#en-step2">Step 2: Preprocessing</a>
+      <ul>
+        <li><a href="#en-s2-eog">Bipolar EOG</a></li>
+        <li><a href="#en-s2-avgref">Average reference</a></li>
+        <li><a href="#en-s2-filter">Coarse filtering (high-pass, low-pass)</a></li>
+        <li><a href="#en-s2-ica">Removing eye artifacts with ICA</a></li>
+        <li><a href="#en-s2-epoch">Epoching and baseline correction</a></li>
+        <li><a href="#en-s2-reject">Fine filtering (rejecting epochs)</a></li>
+      </ul>
+    </li>
+    <li><a href="#en-step3">Step 3: Conventional ERP (quality check)</a>
+      <ul>
+        <li><a href="#en-s3-1">Step 1: Split the trials into two groups</a></li>
+        <li><a href="#en-s3-2">Step 2: Average each group</a></li>
+        <li><a href="#en-s3-3">Step 3: Plot PO8 and PO7, with a “face minus car” line</a></li>
+        <li><a href="#en-s3-4">Step 4: One number, plus an error band</a></li>
+        <li><a href="#en-s3-5">Step 5: Topographic map</a></li>
+        <li><a href="#en-s3-6">Step 6: Robustness check</a></li>
+      </ul>
+    </li>
+    <li><a href="#en-step4">Step 4: Time-resolved decoding</a>
+      <ul>
+        <li><a href="#en-s4-pre">Preprocessing</a></li>
+        <li><a href="#en-s4-m1">Training method 1</a></li>
+        <li><a href="#en-s4-m2">Training method 2</a></li>
+        <li><a href="#en-s4-record">Data and procedure</a></li>
+        <li><a href="#en-s4-tools">Tools and code</a></li>
+        <li><a href="#en-s4-stats">Statistics</a></li>
+      </ul>
+    </li>
+    <li><a href="#en-refs">References</a>
+      <ul>
+        <li><a href="#en-refs-sw">Software</a></li>
+        <li><a href="#en-refs-data">Data</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+
+<main>
+<!-- ============================== Step 1 ============================== -->
+<h2 id="en-step1">Step 1: Getting to know the data</h2>
+<ul>
+  <li>One participant (sub-001) of the ERP CORE N170 task was downloaded with the <code>hu-neuro-pipeline</code> package; the data come from OSF project pfde9.</li>
+  <li>The data were read into MNE. Below are the channels, sampling rate and duration:
+    <p>Basic information of <code>data/step2_eog-raw.fif</code>: sampling rate 1024 Hz, duration 683.0 s (about 11 min 23 s), 699,392 samples, 35 channels.</p>
+    <p><strong>Channels (30 EEG + 5 EOG)</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Channel</th><th>Type</th><th>#</th><th>Channel</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>FP1</td><td>EEG</td><td>19</td><td>F8</td><td>EEG</td></tr>
+        <tr><td>2</td><td>F3</td><td>EEG</td><td>20</td><td>FC4</td><td>EEG</td></tr>
+        <tr><td>3</td><td>F7</td><td>EEG</td><td>21</td><td>FCz</td><td>EEG</td></tr>
+        <tr><td>4</td><td>FC3</td><td>EEG</td><td>22</td><td>Cz</td><td>EEG</td></tr>
+        <tr><td>5</td><td>C3</td><td>EEG</td><td>23</td><td>C4</td><td>EEG</td></tr>
+        <tr><td>6</td><td>C5</td><td>EEG</td><td>24</td><td>C6</td><td>EEG</td></tr>
+        <tr><td>7</td><td>P3</td><td>EEG</td><td>25</td><td>P4</td><td>EEG</td></tr>
+        <tr><td>8</td><td>P7</td><td>EEG</td><td>26</td><td>P8</td><td>EEG</td></tr>
+        <tr><td>9</td><td>P9</td><td>EEG</td><td>27</td><td>P10</td><td>EEG</td></tr>
+        <tr><td>10</td><td>PO7</td><td>EEG</td><td>28</td><td>PO8</td><td>EEG</td></tr>
+        <tr><td>11</td><td>PO3</td><td>EEG</td><td>29</td><td>PO4</td><td>EEG</td></tr>
+        <tr><td>12</td><td>O1</td><td>EEG</td><td>30</td><td>O2</td><td>EEG</td></tr>
+        <tr><td>13</td><td>Oz</td><td>EEG</td><td>31</td><td>HEOG_left</td><td>EOG</td></tr>
+        <tr><td>14</td><td>Pz</td><td>EEG</td><td>32</td><td>HEOG_right</td><td>EOG</td></tr>
+        <tr><td>15</td><td>CPz</td><td>EEG</td><td>33</td><td>VEOG_lower</td><td>EOG</td></tr>
+        <tr><td>16</td><td>FP2</td><td>EEG</td><td>34</td><td>HEOG (left − right)</td><td>EOG</td></tr>
+        <tr><td>17</td><td>Fz</td><td>EEG</td><td>35</td><td>VEOG (VEOG_lower − FP2)</td><td>EOG</td></tr>
+        <tr><td>18</td><td>F4</td><td>EEG</td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </li>
+  <li>From <code>events.tsv</code> and <code>task-N170_events.json</code>, this is what each event code means:
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>1–40</td><td>Face</td></tr>
+        <tr><td>41–80</td><td>Car</td></tr>
+        <tr><td>101–140</td><td>Scrambled face</td></tr>
+        <tr><td>141–180</td><td>Scrambled car</td></tr>
+        <tr><td>201</td><td>Response: correct</td></tr>
+        <tr><td>202</td><td>Response: incorrect</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </li>
+</ul>
+
+<!-- ============================== Step 2 ============================== -->
+<h2 id="en-step2">Step 2: Preprocessing</h2>
+<p>Broadly follows the official ERP CORE pipeline, in a simplified form.</p>
+
+<ol class="steps">
+  <li id="en-s2-eog">
+    <p>Mark the 3 eye channels as EOG and compute bipolar EOG: HEOG = left − right, VEOG = VEOG_lower − FP2, to make artifact rejection easier later (why the bipolar EOG is needed and how it is computed: see HTML3).</p>
+    <p>Output file: <code>data/step2_eog-raw.fif</code>.</p>
+  </li>
+  <li id="en-s2-avgref">
+    <p>Set an average reference. A voltage is always “the difference from some reference voltage”. In this dataset the Biosemi recording system has no true reference, only a spare electrode acting as one, so a reference has to be chosen. We chose the following: at every time point, compute the mean voltage of the 30 scalp electrodes, then subtract this mean from every electrode:</p>
+    <div class="math"><math display="block">
+      <msubsup><mi>x</mi><mi>i</mi><mtext>new</mtext></msubsup><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>=</mo>
+      <msub><mi>x</mi><mi>i</mi></msub><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>−</mo>
+      <mfrac><mn>1</mn><mn>30</mn></mfrac>
+      <munderover><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow><mn>30</mn></munderover>
+      <msub><mi>x</mi><mi>j</mi></msub><mo>(</mo><mi>t</mi><mo>)</mo>
+    </math></div>
+    <ul>
+      <li>xᵢ(t): the original voltage of electrode i at time t;</li>
+      <li>The sum: the mean of the 30 scalp electrodes at the same moment.</li>
+    </ul>
+    <p>Afterwards, the 30 electrodes add up to exactly 0 at every time point. Each electrode’s value now says “<strong>higher or lower than the mean over the whole head</strong>”. A side benefit is that noise shared by all electrodes (such as the 60 Hz interference seen earlier) is largely removed. <em>Note: the EOG data were not included in the mean.</em></p>
+    <p>Output file: <code>data/step2_avgref-raw.fif</code></p>
+    <figure><img src="ERP_notes_img/step2_avgref_before_after.jpg" alt="Raw traces before (left) and after (right) average referencing" loading="lazy"></figure>
+    <p>(The shared noise between 12.5 s and 15 s on the left has clearly been removed on the right.)</p>
+  </li>
+  <li id="en-s2-filter">
+    <p>Coarse filtering:</p>
+    <p>1. A 0.1 Hz high-pass, to remove drifts caused by sweat, skin potentials and slowly changing electrodes (the EOG data are filtered too).</p>
+    <p>Effect:</p>
+    <p>EEG power by frequency band (µV²/Hz)</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Band</th><th class="num">Before</th><th class="num">After</th><th class="num">Change</th></tr></thead>
+      <tbody>
+        <tr><td>0.01–0.05 Hz (drift)</td><td class="num">31,493.54</td><td class="num">1,392.11</td><td class="num"><strong>−95.6%</strong></td></tr>
+        <tr><td>0.05–0.1 Hz (transition band)</td><td class="num">10,612.89</td><td class="num">6,813.60</td><td class="num">−35.8%</td></tr>
+        <tr><td>0.1–1 Hz</td><td class="num">935.33</td><td class="num">933.49</td><td class="num">−0.2%</td></tr>
+        <tr><td>1–4 Hz (δ)</td><td class="num">14.32</td><td class="num">14.26</td><td class="num">−0.4%</td></tr>
+        <tr><td>4–8 Hz (θ)</td><td class="num">1.58</td><td class="num">1.57</td><td class="num">−0.5%</td></tr>
+        <tr><td>8–13 Hz (α)</td><td class="num">5.99</td><td class="num">5.99</td><td class="num">0.0%</td></tr>
+        <tr><td>13–30 Hz (β)</td><td class="num">2.05</td><td class="num">2.05</td><td class="num">0.0%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Saved as <code>data/step2_hp-raw.fif</code></p>
+    <p>2. Then a 30 Hz low-pass, to remove the 60 Hz mains pickup and part of the muscle activity. (For how filtering works and the details, see HTML2; the theory there was written by Claude and I have not learned it yet.) (The EOG data are filtered too.)</p>
+    <p>Effect:</p>
+    <p><strong>EEG power by frequency band (µV²/Hz)</strong></p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Band</th><th class="num">Before</th><th class="num">After</th><th class="num">Change</th></tr></thead>
+      <tbody>
+        <tr><td>1–4 Hz</td><td class="num">13.29</td><td class="num">13.26</td><td class="num">−0.3%</td></tr>
+        <tr><td>4–8 Hz</td><td class="num">1.513</td><td class="num">1.510</td><td class="num">−0.2%</td></tr>
+        <tr><td>8–13 Hz</td><td class="num">5.493</td><td class="num">5.482</td><td class="num">−0.2%</td></tr>
+        <tr><td>13–20 Hz</td><td class="num">1.358</td><td class="num">1.355</td><td class="num">−0.2%</td></tr>
+        <tr><td>20–30 Hz</td><td class="num">2.724</td><td class="num">2.721</td><td class="num">−0.1%</td></tr>
+        <tr><td>30–34 Hz (start of transition band)</td><td class="num">3.319</td><td class="num">2.292</td><td class="num">−30.9%</td></tr>
+        <tr><td>34–38 Hz (transition band)</td><td class="num">3.458</td><td class="num">0.135</td><td class="num">−96.1%</td></tr>
+        <tr><td>38–45 Hz</td><td class="num">3.094</td><td class="num">0.0004</td><td class="num">≈ −100%</td></tr>
+        <tr><td>45–55 Hz</td><td class="num">2.821</td><td class="num">0.0002</td><td class="num">≈ −100%</td></tr>
+        <tr><td>55–65 Hz</td><td class="num">2.357</td><td class="num">0.0002</td><td class="num">≈ −100%</td></tr>
+        <tr><td>65–100 Hz</td><td class="num">1.448</td><td class="num">0.0001</td><td class="num">≈ −100%</td></tr>
+        <tr><td>100–200 Hz</td><td class="num">0.438</td><td class="num">0.00003</td><td class="num">≈ −100%</td></tr>
+        <tr><td>The 60 Hz bin alone</td><td class="num">2.355</td><td class="num">0.0002</td><td class="num">≈ −100%</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Saved again as <code>data/step2_hp-raw.fif</code></p>
+    <p>At this point we noticed that the standard deviation of Oz had dropped by only 0.2% and was still about 100 µV, 5 times that of its neighbours O1 and O2 (about 19 µV). This means its noise sits in the low frequencies rather than being muscle activity, and looks more like jumps or drift from poor electrode contact. We used the power spectrum to check whether something was wrong.</p>
+    <figure><img src="ERP_notes_img/step2_psd_Oz_O1_O2.png" alt="Power spectra of O1, Oz and O2 after the 0.1 Hz high-pass" loading="lazy"></figure>
+    <p>Oz is clearly higher than the other two electrodes at low frequencies, which strongly suggests poor electrode contact. The face–car difference of the N170 is mainly over the lateral occipito-temporal sites: PO7, PO8, P7, P8, P9, P10. The quality check in Step 3 looks at PO8 and PO7 and does not use Oz at all. So we marked Oz as a bad channel and redid the two filtering steps above, saved as: <code>step2_eog-raw.fif</code>, <code>step2_avgref-raw.fif</code>, <code>step2_hp-raw.fif</code>, <code>step2_lp-raw.fif</code></p>
+    <p id="en-s2-ica">3. ICA filtering: first find the eye-movement components, then subtract them from the data.</p>
+    <figure><img src="ERP_notes_img/step2_ica_components_1.png" alt="ICA component topographies, ICA000–ICA019" loading="lazy"></figure>
+    <figure><img src="ERP_notes_img/step2_ica_components_2.png" alt="ICA component topographies, ICA020–ICA027" loading="lazy"></figure>
+    <p>ICA000 correlates 0.94 with VEOG and has a kurtosis of 12, so it was judged to be blinks; ICA003 correlates 0.77 with HEOG and its steps coincide with those in HEOG, so it was judged to be horizontal eye movements.</p>
+    <p>After removing these components, the result was saved as <code>data/step2_ica-raw.fif</code>. The effect of the removal:</p>
+    <figure><img src="ERP_notes_img/step2_ica_blinks_before_after.png" alt="Average of 152 blinks at FP1 and FP2, before and after ICA" loading="lazy"></figure>
+    <p>The ICA solution is saved as <code>data/step2_ica-ica.fif</code></p>
+    <figure><img src="ERP_notes_img/step2_ica_before_after.jpg" alt="Traces before (grey) and after (purple) ICA; the eye artifacts around 40 s and 46 s are removed" loading="lazy"></figure>
+    <p>(Large eye artifacts can be seen around 40 s and 46 s; they have of course been removed.)</p>
+  </li>
+  <li value="5" id="en-s2-epoch">
+    <p>Cut out the signal from 200 ms before to 800 ms after each stimulus as one epoch. Each epoch starts at a slightly different voltage level, a few μV higher or lower; this is leftover slow drift that has nothing to do with the stimulus. To remove it: for each trial and each channel, compute the mean voltage from −200 to 0 ms and subtract it from the whole epoch.</p>
+    <div class="math"><math display="block">
+      <msub><mi>x</mi><mtext>corrected</mtext></msub><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>=</mo>
+      <mi>x</mi><mo>(</mo><mi>t</mi><mo>)</mo>
+      <mo>−</mo>
+      <msub><mover><mi>x</mi><mo>¯</mo></mover><mtext>baseline</mtext></msub>
+    </math></div>
+    <ul>
+      <li>x(t): the voltage of this trial on this channel at time t;</li>
+      <li>x̄_baseline: the mean voltage of the same trial and channel from −200 to 0 ms.</li>
+    </ul>
+    <p>After the correction, every trial averages 0 before the stimulus, and the values after the stimulus say “how much the voltage has changed relative to before the stimulus”.</p>
+    <p>We do this step after the coarse filtering because some filter kernels are long and could reach across epochs.</p>
+  </li>
+</ol>
+
+<ol class="steps" start="3">
+  <li id="en-s2-reject">
+    <p>Fine filtering: reject epochs with any of the following:</p>
+    <p>1. The voltage of a scalp electrode suddenly becomes very large within this second, far beyond the normal range of EEG.<br>
+    This is usually the participant moving, clenching the jaw, coughing, a loose electrode and so on. These artifacts are much larger than brain activity; keeping them would badly distort the average waveform and also interfere with decoding. The threshold has to be adjusted for each participant, since some people have thin scalps and some thick ones, and whether an artifact is really an artifact should be judged together with the recording itself. The threshold is never stricter than three standard deviations, and it must be above 100 µV.</p>
+    <p>2. The bipolar EOG computed in item 1 of Step 2. During the stimulus, a large spike in VEOG means a blink, and a clear step (a sudden rise or drop) in HEOG means the eyes moved. Epochs over the threshold are rejected, because this usually means the participant did not see the picture properly, or the eye signal is large enough to disturb the ERP recording.</p>
+    <p>3. Epochs with behavioural problems: in the N170 task, the participant presses a key for every picture, to say whether it is an object (a face or a car) or a texture (a scrambled picture).</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Case</th><th>Why reject it</th></tr></thead>
+      <tbody>
+        <tr><td>Wrong answer</td><td>The participant may have been distracted or not looking carefully, so the brain processed the picture incompletely</td></tr>
+        <tr><td><strong>Response time under 200 ms</strong></td><td>Too fast: nobody can see and judge a picture that quickly, so it was most likely a premature guess</td></tr>
+        <tr><td><strong>Response time over 1000 ms</strong></td><td>Too slow: the participant may have been zoning out or distracted</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>The 200–1000 ms range is the one used by ERP CORE.</p>
+    <p><strong>In total, 92 epochs were rejected and 228 kept.</strong> Remaining per category: face 60, car 48, scrambled_face 62, scrambled_car 58.</p>
+  </li>
+</ol>
+
+<!-- ============================== Step 3 ============================== -->
+<h2 id="en-step3">Step 3: Conventional ERP (quality check)</h2>
+
+<h4 id="en-s3-1">Step 1: Split the trials into two groups</h4>
+<p>Take the intact faces (60) and intact cars (48) from <code>step2_clean-epo.fif</code>.</p>
+<p>We only compare faces with cars; the scrambled pictures are not used in this step.</p>
+
+<h4 id="en-s3-2">Step 2: Average each group</h4>
+<p>On each electrode, average the waveforms of the 60 face trials to get “the average response to faces”; the same for cars.</p>
+<p>In a single trial the noise is much larger than the brain response. After averaging, noise that comes at a different time in every trial should in theory cancel out, while the response that appears at the same moment every time remains.</p>
+<figure><img src="ERP_notes_img/step3_car_average.png" alt="Average waveform for cars (n = 48), 30 EEG channels" loading="lazy"></figure>
+<figure><img src="ERP_notes_img/step3_face_average.png" alt="Average waveform for faces (n = 60), 30 EEG channels" loading="lazy"></figure>
+<p><strong>Averaging did reduce the noise</strong>: there is no brain response yet from −200 to 0 ms before the stimulus, so the fluctuation in this period can be taken as the size of the noise.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Category</th><th class="num">Noise of a single trial</th><th class="num">After averaging</th><th class="num">Reduction</th><th class="num">Theoretical √n</th></tr></thead>
+  <tbody>
+    <tr><td>Faces (60)</td><td class="num">8.19 µV</td><td class="num">1.26 µV</td><td class="num">6.5×</td><td class="num">7.7</td></tr>
+    <tr><td>Cars (48)</td><td class="num">8.31 µV</td><td class="num">1.50 µV</td><td class="num">5.5×</td><td class="num">6.9</td></tr>
+  </tbody>
+</table>
+</div>
+<p>If the noise were completely independent and random in every trial, averaging n trials would shrink it by a factor of √n. The actual reduction is a little smaller than the theoretical one, which means part of the noise is not completely random, for example alpha waves or slow drift that persist over a stretch of time and do not average out.</p>
+
+<h4 id="en-s3-3">Step 3: Plot PO8 and PO7, with a “face minus car” line</h4>
+<p>Draw three lines: the average for faces, the average for cars, and the difference wave obtained by subtracting the two.</p>
+<p>Around 110–150 ms, according to the literature (3), the difference wave should go down (negative), i.e. faces lower than cars. Note that both the face and the car lines may be above 0; that does not matter, what counts is that faces are lower than cars.</p>
+
+<h4 id="en-s3-4">Step 4: One number, plus an error band</h4>
+<p>Compute the mean of the difference wave over 110–150 ms, and draw a shaded band around the difference wave to show the error range.</p>
+<ul>
+  <li>A single number is easy to record and easy to compare with Step 6 later.</li>
+  <li>A single participant is noisy, and one line could be chance. Only if the whole band lies below 0 can the difference be said not to come from noise.</li>
+  <li>The 110–150 ms window was fixed in advance and is not changed whatever the result.<br>The actual data:</li>
+</ul>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Electrode</th><th class="num">Face − car (110–150 ms)</th><th class="num">95% confidence interval</th></tr></thead>
+  <tbody>
+    <tr><td>PO7</td><td class="num">−1.65 µV</td><td class="num">[−4.93, 1.63]</td></tr>
+    <tr><td>PO8</td><td class="num">+0.37 µV</td><td class="num">[−2.80, 3.53]</td></tr>
+  </tbody>
+</table>
+</div>
+<figure><img src="ERP_notes_img/step3_diff_PO7_PO8.png" alt="Face and car averages and the difference wave at PO7 and PO8; grey is the 95% confidence interval of the difference wave" loading="lazy"></figure>
+<p>Because both 95% confidence intervals include 0, the difference wave is not significant. The difference wave oscillates very rhythmically, which suggests some residual alpha activity. But since the N170 itself falls within the alpha frequency range, the idea of filtering again was rejected.</p>
+
+<h4 id="en-s3-5">Step 5: Topographic map</h4>
+<p>For each electrode, compute “face minus car, mean over 110–150 ms”, and plot these 30 numbers on the head.</p>
+<p>From the literature, the difference is expected where the N170 appears, i.e. over both sides of the back of the head (1). If the most negative area were at the forehead, the eye artifacts might not have been removed completely (2); if it were concentrated on one electrode, that electrode might be noisy.</p>
+<figure class="narrow"><img src="ERP_notes_img/step3_topo_diff.png" alt="Topographic map of face minus car, 110–150 ms" loading="lazy"></figure>
+<p>Nothing is clearly wrong with this map, but the most negative area deviates from the literature.</p>
+
+<h4 id="en-s3-6">Step 6: Robustness check</h4>
+<p>Filtering changes the waveform, and 30 Hz is a value we chose ourselves. We need to make sure that the effect we see comes from the brain and not from this choice.</p>
+<p>We replaced the 30 Hz low-pass with 40 Hz, and then with no low-pass at all, keeping everything else the same (the same ICA, the same rejected trials). For each, we plotted the PO8 difference wave, overlaid the three, and computed the 110–150 ms mean again.</p>
+<p>Results:</p>
+<figure><img src="ERP_notes_img/step3_filter_PO8.png" alt="PO8 difference wave with three low-pass settings" loading="lazy"></figure>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Low-pass</th><th class="num">PO8 face − car (110–150 ms)</th></tr></thead>
+  <tbody>
+    <tr><td>30 Hz (original)</td><td class="num">+0.37 µV</td></tr>
+    <tr><td>40 Hz</td><td class="num">−0.19 µV</td></tr>
+    <tr><td>No low-pass</td><td class="num">−0.23 µV</td></tr>
+  </tbody>
+</table>
+</div>
+<p><strong>The three lines nearly overlap</strong>: without the low-pass there are just many more high-frequency spikes; the overall shape is exactly the same.</p>
+<p><strong>All three numbers are close to 0</strong>: they differ by only about 0.6 µV from each other, while the 95% confidence interval of PO8 in Step 4 is about ±3 µV, so this difference is far smaller than the noise.</p>
+<p><strong>The conclusion does not change</strong>: with all three settings, PO8 shows no reliable “faces lower than cars” at 110–150 ms.</p>
+<p><strong>But the sign flips</strong>: positive at 30 Hz, negative at 40 Hz and without the low-pass. This shows that this near-zero number is itself unstable; it cannot be read as “faces more positive” or “faces more negative”, only as “no difference”.</p>
+<p>The robustness check is essentially passed.</p>
+
+<!-- ============================== Step 4 ============================== -->
+<h2 id="en-step4">Step 4: Time-resolved decoding</h2>
+
+<h3 id="en-s4-pre">Preprocessing</h3>
+<p>The epochs were downsampled from 1024 Hz to 100 Hz. Each epoch runs from −200 to 800 ms, which gives 100 time points 10 ms apart. Since the data had already been low-pass filtered, no information above 50 Hz is left, so a rate of 100 Hz satisfies the Shannon sampling theorem.</p>
+
+<h3 id="en-s4-m1">Training method 1:</h3>
+<figure class="board"><img src="ERP_notes_img/method1_sketch_1.jpg" alt="Sketch: the raw data, many face and car trials, each with EEG from 30-odd electrodes" loading="lazy"></figure>
+<figure class="board"><img src="ERP_notes_img/method1_sketch_2.jpg" alt="Sketch: every 4 trials of the same class are averaged into one trace" loading="lazy"></figure>
+<figure class="board"><img src="ERP_notes_img/method1_sketch_3.jpg" alt="Sketch: at each time point, 11 pairs of traces train the SVM and 1 pair tests it" loading="lazy"></figure>
+<p>In this method, an SVM is trained only on the data of the 30 electrodes at one time point (see figure): 11 pairs of traces, i.e. 22 vectors of 30 dimensions, are used for training, and the remaining pair (2 vectors) for testing. After cross-validation (leave one pair out, 12 folds), this time point has 12 SVMs, whose accuracies are averaged into one value. With 100 time points, we end up with 100 such values.</p>
+
+<h3 id="en-s4-m2">Training method 2:</h3>
+<figure class="board"><img src="ERP_notes_img/method2_sketch.jpg" alt="Sketch: the data of all electrodes over a time period are joined into one vector; the vectors of 11 pairs of traces train the SVM and 1 pair tests it; 12 SVMs per time period" loading="lazy"></figure>
+<p>In this method, the electrode data within one time period are combined into one 60-dimensional vector, and 22 such 60-dimensional vectors are used for training. The advantage is that the classifier can learn how the waveform changes over time, which may carry more information than the previous method.</p>
+
+<h3 id="en-s4-record">Data and procedure</h3>
+<p>The SVM accuracy cannot be compared directly with 50%, for two reasons. First, all 2000 curves share the same data, so the noise of these data does not average out. Second, with very few samples, the chance level of leave-one-out cross-validation may itself deviate from 50% (for example, if the noise was not removed completely, the classifier may pick up some tricks that have nothing to do with the task). So we use a permutation test to find out what the accuracy of this pipeline actually looks like when “faces and cars do not differ”, and compare the real result with that.</p>
+<p><strong>Real curve</strong>: since there are more face trials (60) than car trials (48), we randomly draw 48 face trials so that the two classes have the same amount of data. This draw is done <strong>20 times</strong>. We also average every 4 trials of the same class into one trace to reduce noise. After each draw, the 48 trials of each class are shuffled and cut into 12 groups of 4; this random grouping is done <strong>100 times</strong> per draw. This gives 20 × 100 = <strong>2000 sets</strong> of data. Each set yields one curve of “accuracy over time” with the analysis above, 2000 curves in total. The mean of these 2000 curves at each time point is the <strong>real curve</strong>.</p>
+<p><strong>Null distribution</strong>: for the null distribution, we break the link between the EEG signal and the picture content (the face/car labels). An SVM trained on such data should in theory be completely unable to predict the picture from the EEG; we call it a guessing SVM. After shuffling, 60 trials are still labelled as faces and 48 as cars, only now real faces and real cars are mixed within each label.</p>
+<p>Each shuffle (one <strong>permutation</strong>) produces one <strong>chance curve</strong> with the same steps as the real curve, but with fewer samples: the face draw is still done <strong>20 times</strong>, but the random grouping only <strong>10 times</strong> per draw, giving 20 × 10 = <strong>200</strong> curves, whose mean is one chance curve (1200 × 200 = 240,000 SVMs in total).</p>
+<p>This permutation is done <strong>1000 times</strong>, giving <strong>1000</strong> chance curves. This is the <strong>null distribution</strong>: 1000 chance accuracies at every time point.</p>
+<p>(Each chance curve averages only 200 curves, fewer than the 2000 of the real curve, so the null distribution is somewhat wider and the test is conservative: it can only make significance harder to reach, never create false positives. This was done to finish 1000 permutations in an acceptable time.)</p>
+
+<h3 id="en-s4-tools">Tools and code</h3>
+<p>Most SVM software today is built for training on high-dimensional vectors or on many samples. In this experiment, limited by the number of trials a participant can do, the vectors are small and the samples few, but the number of repetitions is enormous. With an existing library as it is, the whole analysis would take an entire night. So I had Claude rewrite it following the LIBSVM source code, as <code>step6_gpu_lib.py</code>, using only the PyTorch library. For both methods, we compared randomly chosen parts of the data with the results of sklearn: 99.98% of the predictions agree, and the differences come from the order of floating-point operations.</p>
+<p>The code that runs method 1: <code>step6_main.py</code> and <code>step6_permutation.py</code></p>
+<p>The code that runs method 2: <code>step8_window.py</code></p>
+
+<h3 id="en-s4-stats">Statistics</h3>
+<p>By comparing the real curve with the chance curves of the permutation test, we can see whether the EEG signal carries information that tells cars from faces.</p>
+<p>Because we run many tests, simply setting a p threshold is not enough; we also need to control the false discovery rate to deal with false positives. Below is a brief description of the method.</p>
+<figure class="board"><img src="ERP_notes_img/fdr_sketch.jpg" alt="Handwritten (in Chinese): definition of the p value, p = (1 + #{Tb ≥ Tobs}) / (1 + B), and the steps of the FDR procedure" loading="lazy"></figure>
+<p>In this analysis, we set the FDR to 0.05.</p>
+<p>Method 1: no test passed the criterion, even though the figure seems to show a peak above the chance curve near the N170. The lowest FDR in our tests was 0.09, i.e. a false positive rate of 9%, which does not reach statistical significance.</p>
+<p>Method 2: 4 consecutive windows at 150–180 ms passed the FDR correction. Together, the 4 significant windows cover the data from 130 to 200 ms.</p>
+
+<!-- ============================== References ============================== -->
+<h2 id="en-refs">References</h2>
+<div class="refs">
+<p>(1) Bentin, S., Allison, T., Puce, A., Perez, E., &amp; McCarthy, G. (1996). Electrophysiological studies of face perception in humans. <em>Journal of Cognitive Neuroscience, 8</em>(6), 551–565.
+  <span class="use">First report of the N170: largest over posterior temporal sites (then called T5/T6, roughly today’s P7/P8), stronger on the right.</span></p>
+<p>(2) Luck, S. J. (2014). <em>An Introduction to the Event-Related Potential Technique</em> (2nd ed.). MIT Press.
+  <span class="use">The chapter on artifact rejection and correction.</span></p>
+<p>(3) Kappenman, E. S., Farrens, J. L., Zhang, W., Stewart, A. X., &amp; Luck, S. J. (2021). ERP CORE: An open resource for human event-related potential research. <em>NeuroImage, 225</em>, 117465.
+  <span class="use">Defines the N170 as the mean amplitude of the “face minus car” difference wave at PO8 over 110–150 ms; the grand average over all participants is negative, peaking around 131 ms. Our 110–150 ms window, the PO8 electrode and the 131 ms reference value all come from this paper.</span></p>
+<p>(4) Nemrodov, D., Niemeier, M., Patel, A., &amp; Nestor, A. (2018). The neural dynamics of facial identity processing: Insights from EEG-based pattern analysis and image reconstruction. <em>eNeuro, 5</em>(1), ENEURO.0358-17.2018. <a href="https://doi.org/10.1523/ENEURO.0358-17.2018">https://doi.org/10.1523/ENEURO.0358-17.2018</a>
+  <span class="use">Used for: trace averaging, linear SVM, leave-one-out cross-validation, permutation test + FDR, time-window decoding (method 2).</span></p>
+<p>(5) Benjamini, Y., &amp; Hochberg, Y. (1995). Controlling the false discovery rate: A practical and powerful approach to multiple testing. <em>Journal of the Royal Statistical Society: Series B, 57</em>(1), 289–300. <a href="https://doi.org/10.1111/j.2517-6161.1995.tb02031.x">https://doi.org/10.1111/j.2517-6161.1995.tb02031.x</a>
+  <span class="use">Used for: FDR correction.</span></p>
+<p>(6) Phipson, B., &amp; Smyth, G. K. (2010). Permutation p-values should never be zero: Calculating exact p-values when permutations are randomly drawn. <em>Statistical Applications in Genetics and Molecular Biology, 9</em>(1), Article 39. <a href="https://doi.org/10.2202/1544-6115.1585">https://doi.org/10.2202/1544-6115.1585</a>
+  <span class="use">Used for: why 1 is added to both the numerator and the denominator of the p value.</span></p>
+<p>(7) Hyvärinen, A. (1999). Fast and robust fixed-point algorithms for independent component analysis. <em>IEEE Transactions on Neural Networks, 10</em>(3), 626–634. <a href="https://doi.org/10.1109/72.761722">https://doi.org/10.1109/72.761722</a>
+  <span class="use">Used for: the ICA in Step 2 (FastICA).</span></p>
+<p>(8) Chang, C.-C., &amp; Lin, C.-J. (2011). LIBSVM: A library for support vector machines. <em>ACM Transactions on Intelligent Systems and Technology, 2</em>(3), Article 27. <a href="https://doi.org/10.1145/1961189.1961199">https://doi.org/10.1145/1961189.1961199</a>
+  <span class="use">Used for: the SVM solver (underlying sklearn; the GPU version reimplements its algorithm).</span></p>
+<p>(9) Fan, R.-E., Chen, P.-H., &amp; Lin, C.-J. (2005). Working set selection using second order information for training support vector machines. <em>Journal of Machine Learning Research, 6</em>, 1889–1918.
+  <span class="use">Used for: the second-order working set selection in the GPU version of SMO.</span></p>
+
+<h4 id="en-refs-sw">Software</h4>
+<p>(10) Gramfort, A., Luessi, M., Larson, E., Engemann, D. A., Strohmeier, D., Brodbeck, C., Goj, R., Jas, M., Brooks, T., Parkkonen, L., &amp; Hämäläinen, M. (2013). MEG and EEG data analysis with MNE-Python. <em>Frontiers in Neuroscience, 7</em>, 267. <a href="https://doi.org/10.3389/fnins.2013.00267">https://doi.org/10.3389/fnins.2013.00267</a> (this project uses MNE 1.13.2)</p>
+<p>(11) Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011). Scikit-learn: Machine learning in Python. <em>Journal of Machine Learning Research, 12</em>, 2825–2830. (this project uses scikit-learn 1.9.1)</p>
+<p>(12) Paszke, A., Gross, S., Massa, F., et al. (2019). PyTorch: An imperative style, high-performance deep learning library. In <em>Advances in Neural Information Processing Systems 32</em> (pp. 8024–8035). (this project uses PyTorch 2.11.0)</p>
+<p>(13) Harris, C. R., Millman, K. J., van der Walt, S. J., et al. (2020). Array programming with NumPy. <em>Nature, 585</em>, 357–362. <a href="https://doi.org/10.1038/s41586-020-2649-2">https://doi.org/10.1038/s41586-020-2649-2</a></p>
+<p>(14) hu-neuro-pipeline (version 0.9.0) [Computer software]. <a href="https://github.com/alexenge/hu-neuro-pipeline">https://github.com/alexenge/hu-neuro-pipeline</a>
+  <span class="use">Used for: downloading the data. Check the authors and the recommended citation on its GitHub page.</span></p>
+
+<h4 id="en-refs-data">Data</h4>
+<p>(15) ERP CORE N170 dataset, Open Science Framework project pfde9. <a href="https://osf.io/pfde9/">https://osf.io/pfde9/</a> (only participant sub-001 was used)</p>
+</div>
+
+<p class="note">The code of this project was written with the help of Claude (Anthropic), and parts of the analysis design follow Claude’s suggestions.</p>
+
+</main>
+</div>
+</div>
+<script>
+  (function () {
+    var tocBtn = document.querySelector('.toc-toggle');
+    var langBtn = document.querySelector('.lang-toggle');
+    var backdrop = document.querySelector('.toc-backdrop');
+    var blocks = document.querySelectorAll('.lang-block');
+    var labels = {
+      zh: { open: '☰ 目录', close: '✕ 收起', other: 'English', otherLang: 'en' },
+      en: { open: '☰ Contents', close: '✕ Close', other: '中文', otherLang: 'zh-CN' }
+    };
+    var lang = 'zh';
+
+    function setOpen(open) {
+      document.body.classList.toggle('toc-open', open);
+      tocBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      tocBtn.textContent = open ? labels[lang].close : labels[lang].open;
+    }
+    function setLang(next, keepScroll) {
+      lang = next;
+      blocks.forEach(function (b) { b.hidden = b.getAttribute('data-lang') !== lang; });
+      document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+      document.title = document.querySelector('.lang-block[data-lang="' + lang + '"] h1').textContent;
+      langBtn.textContent = labels[lang].other;
+      langBtn.lang = labels[lang].otherLang;
+      setOpen(false);
+      try { localStorage.setItem('erp-notes-lang', lang); } catch (e) {}
+      if (!keepScroll) {
+        window.scrollTo(0, 0);
+        if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+      }
+    }
+
+    var saved = null;
+    try { saved = localStorage.getItem('erp-notes-lang'); } catch (e) {}
+    if (location.hash.indexOf('#en-') === 0) saved = 'en';
+    setLang(saved === 'en' ? 'en' : 'zh', true);
+    if (location.hash) {
+      var target = document.getElementById(location.hash.slice(1));
+      if (target) target.scrollIntoView();
+    }
+
+    langBtn.addEventListener('click', function () { setLang(lang === 'zh' ? 'en' : 'zh'); });
+    tocBtn.addEventListener('click', function () {
+      setOpen(!document.body.classList.contains('toc-open'));
+    });
+    backdrop.addEventListener('click', function () { setOpen(false); });
+    document.querySelectorAll('nav.toc').forEach(function (nav) {
+      nav.addEventListener('click', function (e) { if (e.target.closest('a')) setOpen(false); });
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+  })();
+</script>
+</body>
+</html>

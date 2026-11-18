@@ -109,6 +109,11 @@
   .refs p { padding-left: 2.2em; text-indent: -2.2em; }
   .refs .use { display: block; text-indent: 0; color: var(--muted); }
   ol.steps { padding-left: 22px; }
+  details.explainer { margin: 14px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+  details.explainer > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; color: var(--accent); }
+  details.explainer[open] > summary { border-bottom: 1px solid var(--line); }
+  details.explainer iframe { display: block; width: 100%; height: 600px; border: 0; background: var(--bg); }
+  .explainer-open { margin: 0; padding: 6px 14px 10px; font-size: .9rem; }
 </style>
 </head>
 <body>
@@ -223,6 +228,11 @@
   <li id="s2-eog">
     <p>把 3 个眼电通道标成 EOG 类型，计算双极眼电：HEOG = 左 − 右，VEOG = VEOG_lower − FP2，以方便后续剔除伪迹（为什么要算出双极眼电以及如何算出，链接HTML3）</p>
     <p>输出文件是 <code>data/step2_eog-raw.fif</code>。</p>
+    <details class="explainer">
+      <summary>展开：双极眼电 EOG 的原理（HTML3）</summary>
+      <iframe data-src="ERP_notes_extra/eog_bipolar.zh.html" title="展开：双极眼电 EOG 的原理（HTML3）"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/eog_bipolar.zh.html" target="_blank" rel="noopener">在新标签页打开</a></p>
+    </details>
   </li>
   <li id="s2-avgref">
     <p>设置平均参考值：电压表示永远是“相对于某个标准电压的电压差”，在本次数据集中，由于实验人员使用的Biosemi记录设备没有真正的参考电压，只有一个多余的电极作为参考。所以需要人为另外选择一个参考电压。我们选择的是：在每一个时间点，先算出 30 个头皮电极的平均电压，再让每个电极都减掉这个平均：</p>
@@ -265,6 +275,11 @@
     </div>
     <p>结果存为 <code>data/step2_hp-raw.fif</code></p>
     <p>2.再采用30Hz的低通，为了去掉60Hz交流电的人体感应信号以及一部分肌电。（关于滤波原理与具体操作参考HTML2，这里面原理部分是claude写的，我没学会）（EOG数据也参与）</p>
+    <details class="explainer">
+      <summary>展开：EEG 滤波原理（HTML2）</summary>
+      <iframe data-src="ERP_notes_extra/eeg_filtering.zh.html" title="展开：EEG 滤波原理（HTML2）"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/eeg_filtering.zh.html" target="_blank" rel="noopener">在新标签页打开</a></p>
+    </details>
     <p>实际效果如下：</p>
     <p><strong>EEG 各频段功率（µV²/Hz）</strong></p>
     <div class="table-wrap">
@@ -292,6 +307,11 @@
     <figure><img src="ERP_notes_img/step2_psd_Oz_O1_O2.png" alt="O1、Oz、O2 的功率谱（0.1 Hz 高通后）" loading="lazy"></figure>
     <p>可以发现，Oz在低频处明显高于其他两个电极，提示很有可能存在电极接触不良。N170 的脸–车差异主要在两侧枕颞区：PO7、PO8、P7、P8、P9、P10。Step 3 的质量关卡看的是 PO8 和 PO7，完全用不到 Oz。所以我们将它标记为坏导。重新进行上面两次滤波，存储为：<code>step2_eog-raw.fif</code>、<code>step2_avgref-raw.fif</code>、<code>step2_hp-raw.fif</code>、<code>step2_lp-raw.fif</code></p>
     <p id="s2-ica">3.采取ICA滤波：也就是先找出眼电成分，从数据里减掉</p>
+    <details class="explainer">
+      <summary>展开：ICA 去眼电的原理</summary>
+      <iframe data-src="ERP_notes_extra/ica_eog.zh.html" title="展开：ICA 去眼电的原理"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/ica_eog.zh.html" target="_blank" rel="noopener">在新标签页打开</a></p>
+    </details>
     <figure><img src="ERP_notes_img/step2_ica_components_1.png" alt="ICA 成分地形图 ICA000–ICA019" loading="lazy"></figure>
     <figure><img src="ERP_notes_img/step2_ica_components_2.png" alt="ICA 成分地形图 ICA020–ICA027" loading="lazy"></figure>
     <p>发现ICA000和 VEOG 的相关性 0.94，峰度 12，判断为眨眼的眼电；ICA003和 HEOG 的相关性 0.77，阶跃和 HEOG 同步，判断为水平眼动。</p>
@@ -426,6 +446,11 @@
 <figure class="board"><img src="ERP_notes_img/method1_sketch_2.jpg" alt="手绘：每 4 个同类 trial 平均成一条 trace" loading="lazy"></figure>
 <figure class="board"><img src="ERP_notes_img/method1_sketch_3.jpg" alt="手绘：每个时间点上，11 对 trace 用来训练 SVM，1 对用来测试" loading="lazy"></figure>
 <p>在这个方法中，一个 SVM 只被输入某个时间点上 30 个电极的数据进行训练（如图）：训练用 11 对 trace，也就是 22 个 30 维向量；剩下 1 对（2 个向量）用来测试。交叉验证（留一对，共 12 折）后，得到该时间点的 12 个 SVM，他们的准确率平均为一个值。我们一共有 100 个时间点，最后得到100个这样的值。</p>
+    <details class="explainer">
+      <summary>展开：拉格朗日乘子与支持向量（SVM 原理）</summary>
+      <iframe data-src="ERP_notes_extra/svm_lagrange.zh.html" title="展开：拉格朗日乘子与支持向量（SVM 原理）"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/svm_lagrange.zh.html" target="_blank" rel="noopener">在新标签页打开</a></p>
+    </details>
 
 <h3 id="s4-m2">训练方法2：</h3>
 <figure class="board"><img src="ERP_notes_img/method2_sketch.jpg" alt="手绘：把一段时间内各电极的数据接成一个向量，11 对 trace 的向量用来训练，1 对用来测试，每个时间段训练 12 个 SVM" loading="lazy"></figure>
@@ -601,6 +626,11 @@
   <li id="en-s2-eog">
     <p>Mark the 3 eye channels as EOG and compute bipolar EOG: HEOG = left − right, VEOG = VEOG_lower − FP2, to make artifact rejection easier later (why the bipolar EOG is needed and how it is computed: see HTML3).</p>
     <p>Output file: <code>data/step2_eog-raw.fif</code>.</p>
+    <details class="explainer">
+      <summary>Expand: how bipolar EOG works (HTML3)</summary>
+      <iframe data-src="ERP_notes_extra/eog_bipolar.en.html" title="Expand: how bipolar EOG works (HTML3)"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/eog_bipolar.en.html" target="_blank" rel="noopener">Open in a new tab</a></p>
+    </details>
   </li>
   <li id="en-s2-avgref">
     <p>Set an average reference. A voltage is always “the difference from some reference voltage”. In this dataset the Biosemi recording system has no true reference, only a spare electrode acting as one, so a reference has to be chosen. We chose the following: at every time point, compute the mean voltage of the 30 scalp electrodes, then subtract this mean from every electrode:</p>
@@ -643,6 +673,11 @@
     </div>
     <p>Saved as <code>data/step2_hp-raw.fif</code></p>
     <p>2. Then a 30 Hz low-pass, to remove the 60 Hz mains pickup and part of the muscle activity. (For how filtering works and the details, see HTML2; the theory there was written by Claude and I have not learned it yet.) (The EOG data are filtered too.)</p>
+    <details class="explainer">
+      <summary>Expand: how EEG filtering works (HTML2)</summary>
+      <iframe data-src="ERP_notes_extra/eeg_filtering.en.html" title="Expand: how EEG filtering works (HTML2)"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/eeg_filtering.en.html" target="_blank" rel="noopener">Open in a new tab</a></p>
+    </details>
     <p>Effect:</p>
     <p><strong>EEG power by frequency band (µV²/Hz)</strong></p>
     <div class="table-wrap">
@@ -670,6 +705,11 @@
     <figure><img src="ERP_notes_img/step2_psd_Oz_O1_O2.png" alt="Power spectra of O1, Oz and O2 after the 0.1 Hz high-pass" loading="lazy"></figure>
     <p>Oz is clearly higher than the other two electrodes at low frequencies, which strongly suggests poor electrode contact. The face–car difference of the N170 is mainly over the lateral occipito-temporal sites: PO7, PO8, P7, P8, P9, P10. The quality check in Step 3 looks at PO8 and PO7 and does not use Oz at all. So we marked Oz as a bad channel and redid the two filtering steps above, saved as: <code>step2_eog-raw.fif</code>, <code>step2_avgref-raw.fif</code>, <code>step2_hp-raw.fif</code>, <code>step2_lp-raw.fif</code></p>
     <p id="en-s2-ica">3. ICA filtering: first find the eye-movement components, then subtract them from the data.</p>
+    <details class="explainer">
+      <summary>Expand: how ICA removes eye artifacts</summary>
+      <iframe data-src="ERP_notes_extra/ica_eog.en.html" title="Expand: how ICA removes eye artifacts"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/ica_eog.en.html" target="_blank" rel="noopener">Open in a new tab</a></p>
+    </details>
     <figure><img src="ERP_notes_img/step2_ica_components_1.png" alt="ICA component topographies, ICA000–ICA019" loading="lazy"></figure>
     <figure><img src="ERP_notes_img/step2_ica_components_2.png" alt="ICA component topographies, ICA020–ICA027" loading="lazy"></figure>
     <p>ICA000 correlates 0.94 with VEOG and has a kurtosis of 12, so it was judged to be blinks; ICA003 correlates 0.77 with HEOG and its steps coincide with those in HEOG, so it was judged to be horizontal eye movements.</p>
@@ -804,6 +844,11 @@
 <figure class="board"><img src="ERP_notes_img/method1_sketch_2.jpg" alt="Sketch: every 4 trials of the same class are averaged into one trace" loading="lazy"></figure>
 <figure class="board"><img src="ERP_notes_img/method1_sketch_3.jpg" alt="Sketch: at each time point, 11 pairs of traces train the SVM and 1 pair tests it" loading="lazy"></figure>
 <p>In this method, an SVM is trained only on the data of the 30 electrodes at one time point (see figure): 11 pairs of traces, i.e. 22 vectors of 30 dimensions, are used for training, and the remaining pair (2 vectors) for testing. After cross-validation (leave one pair out, 12 folds), this time point has 12 SVMs, whose accuracies are averaged into one value. With 100 time points, we end up with 100 such values.</p>
+    <details class="explainer">
+      <summary>Expand: Lagrange multipliers and support vectors (how the SVM works)</summary>
+      <iframe data-src="ERP_notes_extra/svm_lagrange.en.html" title="Expand: Lagrange multipliers and support vectors (how the SVM works)"></iframe>
+      <p class="explainer-open"><a href="ERP_notes_extra/svm_lagrange.en.html" target="_blank" rel="noopener">Open in a new tab</a></p>
+    </details>
 
 <h3 id="en-s4-m2">Training method 2:</h3>
 <figure class="board"><img src="ERP_notes_img/method2_sketch.jpg" alt="Sketch: the data of all electrodes over a time period are joined into one vector; the vectors of 11 pairs of traces train the SVM and 1 pair tests it; 12 SVMs per time period" loading="lazy"></figure>
@@ -919,6 +964,27 @@
       nav.addEventListener('click', function (e) { if (e.target.closest('a')) setOpen(false); });
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+
+    // expandable explainers: load the page on first open, then fit the frame to its content
+    function fit(frame) {
+      try {
+        var doc = frame.contentDocument;
+        if (doc && doc.documentElement) frame.style.height = doc.documentElement.scrollHeight + 'px';
+      } catch (e) {}
+    }
+    document.querySelectorAll('details.explainer').forEach(function (d) {
+      d.addEventListener('toggle', function () {
+        var frame = d.querySelector('iframe');
+        if (!d.open || frame.src) return;
+        frame.addEventListener('load', function () {
+          fit(frame);
+          try {
+            new ResizeObserver(function () { fit(frame); }).observe(frame.contentDocument.documentElement);
+          } catch (e) {}
+        });
+        frame.src = frame.getAttribute('data-src');
+      });
+    });
   })();
 </script>
 </body>

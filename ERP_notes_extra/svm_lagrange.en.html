@@ -1,0 +1,691 @@
+<!doctype html><html lang="en"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Lagrange Multipliers and Support Vectors</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Noto+Sans+SC:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each idea is text then a live figure you can drag, like a lab notebook page */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#16212b; --muted:#566573; --line:#d4dce3; --grid:#e6ebef;
+  --f:#c2385a;       /* objective / its gradient */
+  --g:#6a4dd6;       /* constraint / its gradient, also page accent */
+  --cA:#1c8cc6; --cB:#d9820d; --ok:#1f8a5b;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif;
+  --f-math:"STIX Two Text","Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11161b; --surface:#182028; --ink:#e3eaf0; --muted:#97a6b3; --line:#2b3742; --grid:#222c35;
+  --f:#f0718d; --g:#a592ff; --cA:#4cb8ec; --cB:#f2a840; --ok:#4fc28b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161b; --surface:#182028; --ink:#e3eaf0; --muted:#97a6b3; --line:#2b3742; --grid:#222c35;
+  --f:#f0718d; --g:#a592ff; --cA:#4cb8ec; --cB:#f2a840; --ok:#4fc28b; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.8;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-direction:column;gap:10px;padding-bottom:6px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5.4vw,44px);line-height:1.12;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.3;margin:18px 0 0;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .step{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--g);border:1px solid var(--g);border-radius:4px;padding:0 6px;flex:none}
+p{margin:0;max-width:66ch}
+.lede{font-size:18px;color:var(--muted)}
+.m{font-family:var(--f-math);font-style:italic;font-size:1.08em;white-space:nowrap}
+.m b{font-weight:600;font-style:normal}
+.cf{color:var(--f);font-weight:500}.cg{color:var(--g);font-weight:500}.ca{color:var(--cA);font-weight:500}.cb{color:var(--cB);font-weight:500}
+.eq{font-family:var(--f-math);font-size:21px;text-align:center;padding:14px 10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto;white-space:nowrap}
+.eq i{font-style:italic}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.fig-cap{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+.fig-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+.fig-row>*{min-width:0}
+svg.plot{width:100%;height:auto;display:block;max-width:100%}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.readout{display:flex;flex-direction:column;gap:8px;font-size:15px}
+.kv{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.kv span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chip{display:inline-block;font-size:14px;font-weight:500;padding:4px 10px;border-radius:999px;border:1px solid currentColor;line-height:1.5}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:14px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.ctrl label span{font-family:var(--f-mono);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--g)}
+input[type=range]:focus-visible{outline:2px solid var(--g);outline-offset:3px}
+.steps{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;counter-reset:s}
+.steps li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;counter-increment:s}
+.steps li::before{content:counter(s);font-family:var(--f-mono);font-size:13px;color:var(--g);border:1px solid var(--g);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;margin-top:3px}
+.map{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500;text-transform:uppercase}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr.sv td{background:color-mix(in srgb,var(--g) 9%,transparent)}
+tr.hl td{outline:2px solid var(--g);outline-offset:-2px}
+.note{font-size:14.5px;color:var(--muted)}
+.callout{border-left:3px solid var(--g);padding:4px 0 4px 14px;border-radius:0}
+.pts circle,.pts rect{cursor:pointer}
+.vec{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;vertical-align:middle;padding:1px .42em;margin:0 .12em;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor;border-radius:8px;line-height:1.3;font-size:.9em}
+.vec>span{white-space:nowrap}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .15em;line-height:1.3}
+.frac>span:first-child{border-bottom:1.3px solid currentColor;padding:0 .25em}
+.brace{display:inline-flex;flex-direction:column;align-items:center;vertical-align:top}
+.brace>small{font-family:var(--f-body);font-size:12px;color:var(--muted);border-top:1.3px solid var(--muted);padding-top:2px;margin-top:2px;line-height:1.3}
+.derive h4{font-family:var(--f-display);font-size:17px;margin:8px 0 0}
+@media (max-width:620px){.fig-row{grid-template-columns:minmax(0,1fr)}.eq{font-size:18px}}
+@media (prefers-reduced-motion:no-preference){.pulse{transition:opacity .2s}}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">The math behind SVM · Part 1</div>
+  <h1>Lagrange multipliers: why only the support vectors count</h1>
+  <p style="opacity:.7;font-size:.9em">(Translated by Claude Opus 5.5)</p>
+  <p class="lede">Yesterday we said that SVM wants to minimise ‖w‖ subject to "every point lies outside its dashed line". This kind of "minimisation with conditions" is solved with Lagrange multipliers. This page first makes the idea clear with a small 2D problem, then comes back to SVM. Every figure can be dragged.</p>
+</header>
+
+<h2><span class="step">0</span>First, the symbol ∇: the gradient</h2>
+<p>You will see <span class="m">∇f</span> again and again below, read as "the gradient of f" (the symbol ∇ is called nabla). It simply lines up the derivatives of f with respect to each variable into a vector.</p>
+<ol class="steps">
+  <li><div><b>One variable: the derivative is the slope.</b> <span class="m">f(x) = x²</span>, derivative <span class="m">f′(x) = 2x</span>. At x = 1 the slope is 2: nudge x a tiny bit to the right, and f grows by about 2 times that nudge.</div></li>
+  <li><div><b>Two variables: partial derivatives.</b> <span class="m">f(x, y) = x² + y²</span> has two variables, so the slope depends on direction. Move only x and treat y as a constant: <span class="m">∂f/∂x = 2x</span>, the partial derivative with respect to x. Move only y: <span class="m">∂f/∂y = 2y</span>. ∂ is the partial-derivative symbol; you compute it like an ordinary derivative, just treating the other variables as constants.</div></li>
+  <li><div><b>Stack the partial derivatives into a vector, and that is the gradient.</b></div></li>
+</ol>
+<div class="eq">∇<i>f</i> = <span class="vec"><span>∂<i>f</i>/∂<i>x</i></span><span>∂<i>f</i>/∂<i>y</i></span></span> = <span class="vec"><span>2<i>x</i></span><span>2<i>y</i></span></span></div>
+<div class="map"><table>
+  <thead><tr><th>At point</th><th class="num">∇f</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td>(1, 1)</td><td class="num"><span class="vec"><span>2</span><span>2</span></span></td><td>Points up and to the right, away from the origin</td></tr>
+    <tr><td>(2, 0)</td><td class="num"><span class="vec"><span>4</span><span>0</span></span></td><td>Points straight right; farther from the origin, so the arrow is longer</td></tr>
+    <tr><td>(0, 0)</td><td class="num"><span class="vec"><span>0</span><span>0</span></span></td><td>Bottom of the bowl: no direction gets steeper right away, so the gradient is zero</td></tr>
+  </tbody>
+</table></div>
+<p>The gradient has two geometric meanings, and everything below relies on them:</p>
+<ul class="steps" style="counter-reset:none">
+  <li style="counter-increment:none"><div><b>Direction</b>: it points where f <b>increases fastest</b>. f = x² + y² is like a bowl, and the gradient always points away from the origin, up the wall of the bowl.</div></li>
+  <li style="counter-increment:none"><div><b>Length</b>: the <b>rate of change</b> of f at this point along the steepest direction. The farther from the origin, the steeper the bowl and the longer the gradient. More on this below.</div></li>
+</ul>
+<h3 style="font-family:var(--f-display);font-size:19px;margin:6px 0 0">"Length = rate of change" comes in two cases</h3>
+<p>The gradient's length tells you: walk a distance d along the gradient, and f increases by about <span class="m">‖∇f‖ × d</span>. That "about" behaves very differently for two kinds of function. Both figures start at a point and walk along the gradient; the small chart on the right plots the <span class="cg">actual increase</span> together with the <span class="cf">increase predicted from the gradient's length</span>.</p>
+
+<div class="fig">
+  <div class="fig-cap">Case 1 · linear function f = 3x + 4y, starting at the origin, ∇f = <span class="vec"><span>3</span><span>4</span></span>, length 5</div>
+  <div class="fig-row">
+    <svg class="plot" id="gA" viewBox="0 0 360 360" role="img" aria-label="Contours of a linear function and a point walking along the gradient"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="dA">Distance walked along the gradient, d <span id="dAv"></span></label><input type="range" id="dA" min="0" max="1.4" step="0.01" value="0.6"></div>
+      <div class="kv"><span>Point reached</span><span id="rAxy"></span></div>
+      <div class="kv"><span class="cg">Actual increase</span><span id="rAact"></span></div>
+      <div class="kv"><span class="cf">Predicted from starting rate: 5 × d</span><span id="rApred"></span></div>
+      <p class="note">5 = ‖∇f‖ = √(3² + 4²), the gradient's length at the starting point. Actual increase = 3x + 4y at the end point minus 0 at the start.</p>
+      <div class="kv"><span>Difference</span><span id="rAgap"></span></div>
+      <svg class="plot" id="cA" viewBox="0 0 260 150" role="img" aria-label="Actual and predicted increase versus distance"></svg>
+    </div>
+  </div>
+</div>
+<p>A linear function is like a tilted plane, equally steep everywhere, so its contours are <b>evenly spaced parallel lines</b>: neighbouring lines differ by 1 and are all 0.2 = 1/5 apart. However far you walk, the actual increase is <b>exactly</b> 5 × d, and the two lines on the right coincide. Walking 0.2 reaches the f = 1 contour; walking 1 reaches f = 5.</p>
+
+<div class="fig">
+  <div class="fig-cap">Case 2 · curved function f = x² + y², starting at (1, 1), ∇f = <span class="vec"><span>2</span><span>2</span></span>, length 2.83</div>
+  <div class="fig-row">
+    <svg class="plot" id="gB" viewBox="0 0 360 360" role="img" aria-label="Contours of a bowl-shaped function and a point walking along the gradient"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="dB">Distance walked along the gradient, d <span id="dBv"></span></label><input type="range" id="dB" min="0" max="1.4" step="0.01" value="0.6"></div>
+      <div class="kv"><span>Point reached</span><span id="rBxy"></span></div>
+      <div class="kv"><span class="cg">Actual increase</span><span id="rBact"></span></div>
+      <div class="kv"><span class="cf">Predicted from starting rate: 2.83 × d</span><span id="rBpred"></span></div>
+      <p class="note">2.83 = ‖∇f(1, 1)‖ = √(2² + 2²), the gradient's length at the starting point. Actual increase = x² + y² at the end point minus 2 at the start.</p>
+      <div class="kv"><span>Difference</span><span id="rBgap"></span></div>
+      <svg class="plot" id="cB" viewBox="0 0 260 150" role="img" aria-label="Actual and predicted increase versus distance"></svg>
+    </div>
+  </div>
+</div>
+<p>The bowl gets steeper the farther out you go, so its contour circles crowd closer and closer together. Drag d very small (say 0.05) and the actual increase almost matches the prediction; the farther you walk, the more the actual increase exceeds the prediction, and the curve on the right bends up away from the straight line. Here the difference is exactly <span class="m">d²</span>: actual increase = 2.83d + d².</p>
+<p class="callout">So the gradient's length is the rate of change of f <b>at this point</b> along the steepest direction, the same idea as a car's speed: a speedometer showing 60 km/h means that at the current speed you would cover 60 km in an hour, but the speed may change the next second. A linear function has constant speed, so the prediction is always right; a curved function is only accurate over a very small step.</p>
+<p class="callout">One more property: the gradient is always <b>perpendicular to the contour lines</b>. Walk along a contour and f does not change; walk along the gradient and f rises fastest. These two directions are perpendicular to each other.</p>
+
+<h2><span class="step">1</span>The problem: finding a minimum under a condition</h2>
+<p>Start with a problem much simpler than SVM:</p>
+<div class="eq">minimise <i>f</i>(<i>x</i>, <i>y</i>) = <i>x</i>² + <i>y</i>²  subject to: <i>x</i> + <i>y</i> = 2</div>
+<p><span class="cf">f</span> is just the squared distance from the point to the origin. Without the condition, the minimum is obviously at the origin. But the condition requires the point to stay on the line <span class="m">x + y = 2</span>, so the question becomes: <b>which point on the line is closest to the origin?</b></p>
+<p>The circles in the figure are <span class="cf">contours of f</span>: points on the same circle have the same f, and f grows outward. The purple line is the <span class="cg">constraint</span>. Drag the slider to move the point along the line and watch how f changes.</p>
+
+<div class="fig">
+  <div class="fig-cap">Figure 1 · moving along the constraint line</div>
+  <div class="fig-row">
+    <svg class="plot" id="p1" viewBox="0 0 360 360" role="img" aria-label="Contours and the constraint line"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="t1">Position of the point on the line <span id="t1v"></span></label><input type="range" id="t1" min="-1.6" max="1.6" step="0.02" value="-1.1"></div>
+      <div class="kv"><span>Point coordinates</span><span id="r1xy"></span></div>
+      <div class="kv"><span class="cf">f = x² + y²</span><span id="r1f"></span></div>
+      <div class="kv"><span>Angle between the two arrows</span><span id="r1ang"></span></div>
+      <div id="r1chip"></div>
+      <p class="note">The <span class="cf">red arrow</span> is the gradient of f, ∇f, pointing where f rises fastest. The <span class="cg">purple arrow</span> is the constraint's gradient ∇g, perpendicular to the line.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="step">2</span>Key observation: at the optimum the two arrows are parallel</h2>
+<p>Drag to where f is smallest (the point (1, 1)) and you will see two things happen at once: the contour circle just <b>touches</b> the line, and the red and purple arrows <b>point in the same direction</b>.</p>
+<p class="callout">Why must they be parallel? If the red arrow ∇f is not perpendicular to the line, part of it lies along the line. Then moving a tiny bit along the line in the opposite direction makes f smaller, so this is not yet the minimum. Only when ∇f is fully perpendicular to the line, i.e. parallel to ∇g, does moving along the line in either direction fail to make f smaller.</p>
+<p>Written as an equation, "parallel" means one arrow is a multiple of the other:</p>
+<div class="eq"><span class="cf">∇<i>f</i></span> = <i>λ</i> · <span class="cg">∇<i>g</i></span></div>
+<p>This multiple <span class="m">λ</span> (read "lambda") is the <b>Lagrange multiplier</b>. It is just a number, telling you "at the optimum, the objective's gradient is this many times the constraint's gradient".</p>
+
+<h2><span class="step">3</span>What λ means, and inequality constraints</h2>
+<p>λ is not just a helper number; it has a concrete meaning: <b>how much the optimal value gets worse if the constraint is tightened a little</b>. At the optimum (1, 1) of Figure 1, <span class="cf">∇f = <span class="vec"><span>2</span><span>2</span></span></span> is exactly 2 times <span class="cg">∇g = <span class="vec"><span>1</span><span>1</span></span></span>, so λ = 2. That means: if the condition changes from x + y = 2 to x + y = 2.1, the minimum rises by about 2 × 0.1 = 0.2.</p>
+<p>SVM's constraints are inequalities ("score at least 1"), so now look at <span class="m">x + y ≥ c</span>: the point only needs to be on the line or above and to the right of it. Two situations can arise; drag c to see:</p>
+
+<div class="fig">
+  <div class="fig-cap">Figure 2 · inequality constraint x + y ≥ c</div>
+  <div class="fig-row">
+    <svg class="plot" id="p2" viewBox="0 0 360 360" role="img" aria-label="Optimum under an inequality constraint"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="c2">Constraint position c <span id="c2v"></span></label><input type="range" id="c2" min="-2" max="3" step="0.05" value="2"></div>
+      <div id="r2chip"></div>
+      <div class="kv"><span>Optimum</span><span id="r2xy"></span></div>
+      <div class="kv"><span>Minimum f*</span><span id="r2f"></span></div>
+      <div class="kv"><span>Lagrange multiplier λ</span><span id="r2l"></span></div>
+      <p class="note" id="r2txt"></p>
+    </div>
+  </div>
+</div>
+
+<p>There is only one rule, and remembering it is enough:</p>
+<div class="map"><table>
+  <thead><tr><th>Constraint state</th><th>Where the optimum is</th><th class="num">λ</th></tr></thead>
+  <tbody>
+    <tr><td>Not touched (the origin already satisfies the condition)</td><td>Inside the feasible region; the constraint might as well not exist</td><td class="num">= 0</td></tr>
+    <tr><td>Pushed against (the origin fails, so the point has to stop on the boundary)</td><td>Exactly on the line</td><td class="num">&gt; 0</td></tr>
+  </tbody>
+</table></div>
+<p>Both cases together can be written as <span class="m">λ · (x + y − c) = 0</span>: either λ is 0, or the point is exactly on the boundary. This is called <b>complementary slackness</b>, and SVM's support vectors come straight out of this statement.</p>
+
+<h2><span class="step">4</span>Back to SVM</h2>
+<p>First, a recap of what SVM does (Figure 3 below is a concrete example to compare against):</p>
+<ol class="steps">
+  <li><div><b>Data</b>: each trial is a point in the plane, with the PO7 voltage on the horizontal axis and the PO8 voltage on the vertical axis. Each point knows whether it is face A or face B.</div></li>
+  <li><div><b>Scoring</b>: compute a score for each point. The formula and symbols are below.</div></li>
+</ol>
+
+<div class="eq"><i>x</i> = <span class="vec"><span><i>x</i>₁</span><span><i>x</i>₂</span></span> = <span class="vec"><span>PO7 voltage</span><span>PO8 voltage</span></span>   <i>w</i> = <span class="vec"><span><i>w</i>₁</span><span><i>w</i>₂</span></span> = <span class="vec"><span>PO7 weight</span><span>PO8 weight</span></span></div>
+<div class="eq">score = <i>w</i><sup>T</sup><i>x</i> + <i>b</i> = <i>w</i>₁<i>x</i>₁ + <i>w</i>₂<i>x</i>₂ + <i>b</i></div>
+<p class="note">T is the transpose: w<sup>T</sup> = (w₁ w₂) turns the column w into a row. A row times a column gives a single number, namely w₁x₁ + w₂x₂.</p>
+<div class="map"><table>
+  <thead><tr><th>Symbol</th><th>What it is</th><th class="num">Value in Figure 3</th></tr></thead>
+  <tbody>
+    <tr><td><span class="m">x</span></td><td><b>Voltage vector</b>, the data of one trial: x₁ is its voltage at PO7, x₂ its voltage at PO8. Each point has its own x.</td><td class="num">Point 4: <span class="vec"><span>−3.0</span><span>−1.9</span></span> μV</td></tr>
+    <tr><td><span class="m">w</span></td><td><b>Weight vector</b>: w₁ is the PO7 weight, w₂ the PO8 weight. All points share the same w, which is what SVM training looks for. A large absolute value means that electrode matters a lot for classification; a positive sign means a higher voltage on that electrode pushes the score toward B, a negative sign toward A.</td><td class="num"><span class="vec"><span>1.19</span><span>−0.92</span></span></td></tr>
+    <tr><td><span class="m">b</span></td><td><b>Bias</b>: a constant shared by all points that shifts the boundary as a whole. Also found by training.</td><td class="num">0.84</td></tr>
+  </tbody>
+</table></div>
+<p>Plug in point 4:</p>
+<div class="eq">score = (1.19 −0.92) <span class="vec"><span>−3.0</span><span>−1.9</span></span> + 0.84 = −3.58 + 1.74 + 0.84 ≈ −1.00</div>
+<p>This matches point 4's score in the Figure 3 table: exactly −1, so it sits on the dashed line on the A side. The signs of the weights also match the data: in Figure 3 the B points have higher PO7 and lower PO8, so w₁ is positive and w₂ negative.</p>
+<p>Points with score = 0 form the boundary (solid line); points with score = +1 and −1 form the two dashed lines. Positive scores are classified B, negative scores A. With 60 features, w and x each have 60 rows, <span class="m">wᵀx = w₁x₁ + w₂x₂ + … + w₆₀x₆₀</span>, and the notation is unchanged.</p>
+
+<ol class="steps" start="3" style="counter-reset:s 2">
+  <li><div><b>Conditions</b>: every point must lie outside the dashed line on its own side. <b>Each data point brings one condition</b>, so 14 points means 14 conditions:</div></li>
+</ol>
+<div class="eq">Class B points: <i>w</i><sup>T</sup><i>x</i> + <i>b</i> ≥ +1   Class A points: <i>w</i><sup>T</sup><i>x</i> + <i>b</i> ≤ −1</div>
+<ol class="steps" start="4" style="counter-reset:s 3">
+  <li><div><b>Objective</b>: make the margin as wide as possible while satisfying all conditions.</div></li>
+</ol>
+<div class="eq">margin = 2 / ‖<i>w</i>‖,  ‖<i>w</i>‖ = √(<i>w</i>₁² + <i>w</i>₂²)</div>
+<p><span class="m">‖w‖</span> is the length of w; in Figure 3, <span class="m">‖w‖ = √(1.19² + 0.92²) ≈ 1.51</span>. Below we derive why the margin is 2/‖w‖.</p>
+
+<div class="fig derive">
+  <div class="fig-cap">Derivation · margin = 2 / ‖w‖</div>
+  <h4>Setup</h4>
+  <ul style="margin:0;padding-left:1.2em">
+    <li>Boundary (solid line): points with score 0, i.e. <span class="m">wᵀx + b = 0</span></li>
+    <li>Dashed line: points with score 1, i.e. <span class="m">wᵀx + b = 1</span> (the other one is −1)</li>
+    <li>margin = perpendicular distance between the two dashed lines = 2 × (perpendicular distance from a dashed line to the solid line)</li>
+  </ul>
+  <p>So we only need the <b>perpendicular distance d from a dashed line to the solid line</b>.</p>
+
+  <h4>Step 1: the direction perpendicular to the boundary</h4>
+  <p>The partial derivative of the scoring function with respect to x₁ is w₁, and with respect to x₂ is w₂, so its gradient is w. The gradient is perpendicular to contours (Section 0), and the boundary is the "score = 0" contour, so <b>w is perpendicular to the boundary</b>. Shrink it to a unit-length direction vector:</p>
+  <div class="eq"><i>u</i> = <span class="frac"><span><i>w</i></span><span>‖<i>w</i>‖</span></span></div>
+  <p>u is the direction "perpendicular to the boundary, with length 1".</p>
+
+  <h4>Step 2: start at a point on the dashed line and walk d along −u</h4>
+  <p>Take any point x₀ on the dashed line; it satisfies <span class="m">wᵀx₀ + b = 1</span>. Walk a distance d in the −u direction (toward the boundary) and you arrive at</p>
+  <div class="eq"><i>x</i>₀ − <i>d</i>·<i>u</i></div>
+
+  <h4>Step 3: compute the new point's score</h4>
+  <div class="eq"><i>w</i><sup>T</sup>(<i>x</i>₀ − <i>d</i>·<i>u</i>) + <i>b</i> = <span class="brace"><span>(<i>w</i><sup>T</sup><i>x</i>₀ + <i>b</i>)</span><small>= 1, since x₀ is on the dashed line</small></span> − <i>d</i> · <span class="frac"><span><i>w</i><sup>T</sup><i>w</i></span><span>‖<i>w</i>‖</span></span></div>
+  <p>And <span class="m">wᵀw = w₁² + w₂² = ‖w‖²</span>, so</p>
+  <div class="eq">new point's score = 1 − <i>d</i> · <span class="frac"><span>‖<i>w</i>‖²</span><span>‖<i>w</i>‖</span></span> = 1 − <i>d</i>‖<i>w</i>‖</div>
+  <p>Meaning: the score starts at 1 and drops by ‖w‖ for every unit walked.</p>
+
+  <h4>Step 4: require reaching the boundary</h4>
+  <p>We want to know how far to walk to reach the boundary. <b>The boundary is where the score equals 0</b>, so set the "new point's score" from Step 3 to 0. Below we walk through it with the real result from Figure 3 (‖w‖ ≈ 1.51): start at point 13 (which lies exactly on the +1 dashed line) and walk along −u toward the boundary. Drag d and watch the score drop to 0.</p>
+  <div class="fig-row">
+    <svg class="plot" id="pw" viewBox="0 0 360 360" role="img" aria-label="Walking perpendicularly from the dashed line to the boundary"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="dw">Distance walked d <span id="dwv"></span></label><input type="range" id="dw" min="0" max="1.33" step="0.005" value="0.3"></div>
+      <div class="kv"><span>New point's coordinates</span><span id="rwxy"></span></div>
+      <div class="kv"><span>Score from the scoring function</span><span id="rwsc"></span></div>
+      <div class="kv"><span>Formula 1 − 1.51d</span><span id="rwfm"></span></div>
+      <div id="rwchip"></div>
+      <svg class="plot" id="cw" viewBox="0 0 260 170" role="img" aria-label="Score versus distance walked"></svg>
+    </div>
+  </div>
+  <p class="note">The two score rows are always equal: one plugs the new point's coordinates into wᵀx + b, the other is the formula from Step 3. The score drops by 1.51 per unit walked, so the chart on the right is a straight line with slope −1.51, crossing 0 at d = 0.66. Keep walking to d = 1.33 and the score becomes −1, reaching the other dashed line; that whole stretch is the margin.</p>
+  <p>Set score = 0 and solve the linear equation for d:</p>
+  <div class="eq">1 − <i>d</i>‖<i>w</i>‖ = 0 ⇒ 1 = <i>d</i>‖<i>w</i>‖ ⇒ <i>d</i> = <span class="frac"><span>1</span><span>‖<i>w</i>‖</span></span></div>
+  <p>With numbers: d = 1/1.51 ≈ 0.66, matching where the score reaches 0 in the readout. There is one dashed line on each side, so</p>
+  <div class="eq">margin = 2<i>d</i> = <span class="frac"><span>2</span><span>‖<i>w</i>‖</span></span></div>
+</div>
+
+<p>The smaller ‖w‖, the wider the margin, so the objective is:</p>
+<div class="eq">subject to the 14 conditions above, find the <i>w</i> and <i>b</i> that minimise ‖<i>w</i>‖</div>
+<p>So SVM is the same kind of thing as the small problem: finding a minimum under inequality conditions. The only difference is that there is no longer 1 condition but "1 per data point". Side by side:</p>
+<div class="map"><table>
+  <thead><tr><th>Small problem</th><th>SVM</th></tr></thead>
+  <tbody>
+    <tr><td>Thing to minimise: distance from the point to the origin</td><td>Thing to minimise: length of w (equivalent to widest margin)</td></tr>
+    <tr><td>1 condition: the point must be above-right of the purple line</td><td>14 conditions: every data point must be outside its dashed line</td></tr>
+    <tr><td>1 Lagrange multiplier λ</td><td>14 multipliers, one per point. In SVM they are usually called α (alpha)</td></tr>
+    <tr><td>Condition not touched → λ = 0</td><td>The point is far from the boundary and does not touch the dashed line → its α = 0, and it has no effect on the result</td></tr>
+    <tr><td>Condition pushed against → λ &gt; 0</td><td>The point sits exactly on a dashed line (score exactly +1 or −1) → its α &gt; 0; this is a <b>support vector</b></td></tr>
+  </tbody>
+</table></div>
+<h3 style="font-family:var(--f-display);font-size:19px;margin:6px 0 0">Why w is built from the support vectors</h3>
+<p>When training an SVM, the coordinates of all 14 points are known data, and what we are looking for is w₁, w₂, b. So switch viewpoint here: <b>w₁, w₂, b are the variables, and the point coordinates are constants</b>. Write the coordinates of point i as <span class="m">xᵢ</span> = <span class="vec"><span>xᵢ₁</span><span>xᵢ₂</span></span> (xᵢ₁ is its voltage at PO7, xᵢ₂ at PO8), and its Lagrange multiplier as <span class="m">αᵢ</span>.</p>
+<p><b>Equivalent objective function.</b> The goal is to minimise ‖w‖ = √(w₁² + w₂²), but the square root is awkward to differentiate. Length is never negative, so minimising ‖w‖ and minimising ‖w‖² find the same w; we therefore minimise</p>
+<div class="eq"><i>F</i> = ½‖<i>w</i>‖² = ½(<i>w</i>₁² + <i>w</i>₂²)</div>
+<p>We call F the <b>equivalent objective function</b>: it gives exactly the same result as "widest margin", just easier to differentiate. The ½ in front is there to cancel the 2 when differentiating. It has the same shape as x² + y² from Section 1: view each pair of weights (w₁, w₂) as a point in the "weight plane", and F is half its squared distance to the origin. So SVM asks: with all 14 conditions satisfied, find the w closest to the origin.</p>
+<p>What we need is the "parallel gradients" idea from Section 2. First write out the three kinds of function, take partial derivatives with respect to w₁ and w₂, and stack them vertically to get the gradient with respect to w:</p>
+<div class="map"><table>
+  <thead><tr><th>Function</th><th>Written out</th><th>Gradient with respect to w</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td>Equivalent objective</td><td><span class="m">F = ½(w₁² + w₂²)</span></td><td><span class="vec"><span>w₁</span><span>w₂</span></span> = w</td><td>Same as x² + y² in Section 0, just with variables w₁, w₂</td></tr>
+    <tr><td>Condition for class B point i<br><span class="note">requires Gᵢ ≥ 1</span></td><td><span class="m">Gᵢ = xᵢ₁w₁ + xᵢ₂w₂ + b</span></td><td><span class="vec"><span>xᵢ₁</span><span>xᵢ₂</span></span> = xᵢ</td><td>Point 13: G = −2.4w₁ − 3.3w₂ + b, gradient <span class="vec"><span>−2.4</span><span>−3.3</span></span></td></tr>
+    <tr><td>Condition for class A point i<br><span class="note">score ≤ −1; multiply both sides by −1 to get Gᵢ ≥ 1</span></td><td><span class="m">Gᵢ = −(xᵢ₁w₁ + xᵢ₂w₂ + b)</span></td><td><span class="vec"><span>−xᵢ₁</span><span>−xᵢ₂</span></span> = −xᵢ</td><td>Point 4: G = 3.0w₁ + 1.9w₂ − b, gradient <span class="vec"><span>3.0</span><span>1.9</span></span></td></tr>
+  </tbody>
+</table></div>
+<p class="note">What the objective F is: making margin = 2/‖w‖ widest means making ‖w‖ = √(w₁² + w₂²) smallest. The square root is awkward to differentiate, and minimising ‖w‖ or ‖w‖² gives the same w, so we use the square; the ½ in front only cancels the 2 when differentiating. It has the same shape as x² + y² from Section 1: in the (w₁, w₂) plane, F is half the squared distance to the origin. So SVM is finding the w closest to the origin while satisfying the 14 conditions.</p>
+<p>In the score xᵢ₁w₁ + xᵢ₂w₂ + b, the point's coordinates are the coefficients of w₁ and w₂, so the partial derivatives with respect to w leave exactly the coordinates. Class A has an extra minus sign because "≤ −1" was flipped into "≥ 1".</p>
+<p>Section 2 had only one condition, and the optimum satisfied <span class="m">∇f = λ∇g</span>. With several conditions this becomes <b>gradient of the objective = each condition's gradient times its own multiplier, all added up</b>:</p>
+<div class="eq">∇<i>F</i> = Σ<sub>i</sub> <i>α</i><sub>i</sub> ∇<i>G</i><sub>i</sub></div>
+<p>Intuition: the optimum is pressed against several boundaries at once, and the objective's gradient must be expressible as a combination of those boundaries' directions; otherwise you could still slide a little along the boundaries in some direction and make the objective smaller. Substituting the three gradients from the table:</p>
+<div class="eq"><i>w</i> = Σ<sub>class B</sub> <i>α</i><sub>i</sub> <i>x</i><sub>i</sub> − Σ<sub>class A</sub> <i>α</i><sub>i</sub> <i>x</i><sub>i</sub></div>
+<p>Now use the conclusion of Section 3: a point not pressed against its dashed line has αᵢ = 0, so its term is the zero vector and adding it changes nothing. <b>Only the support vectors actually remain</b>, and that is the mathematical meaning of "the boundary is determined only by the support vectors".</p>
+
+<div class="fig">
+  <div class="fig-cap">Figure · building w from the three support vectors of Figure 3</div>
+  <div class="fig-row">
+    <svg class="plot" id="pv" viewBox="0 0 360 360" role="img" aria-label="Contributions of the three support vectors placed head to tail to form w"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="sv">Terms added so far <span id="svv"></span></label><input type="range" id="sv" min="0" max="3" step="1" value="3"></div>
+      <div id="rvterms" class="readout" style="gap:6px"></div>
+      <div class="kv"><span><b>Running sum</b></span><span id="rvsum"></span></div>
+      <div id="rvchip"></div>
+      <p class="note">The other 11 points have α = 0; each of their terms is the zero vector, which draws as just a dot and does not change the result.</p>
+    </div>
+  </div>
+</div>
+<p>Each term is "α × coordinates", with a plus sign for class B and a minus sign for class A. Placed head to tail, the three terms end exactly at the w computed by sklearn.</p>
+
+<p><b>While we are at it, take the partial derivative with respect to b.</b> The objective F does not contain b, so its partial derivative with respect to b is 0; for class B, Gᵢ has partial derivative +1 with respect to b, and for class A it is −1. By the same "parallel gradients" rule:</p>
+<div class="eq">0 = Σ<sub>class B</sub> <i>α</i><sub>i</sub> − Σ<sub>class A</sub> <i>α</i><sub>i</sub></div>
+<p>That is, <b>the α values of class A add up to the same total as the α values of class B</b>. In Figure 3: 0.618 + 0.514 = 1.132, exactly point 13's α. This condition is why, as Section 5 says, SMO must adjust two α values at a time.</p>
+<p class="callout">This also answers a question raised earlier: why is w perpendicular to the boundary? Take the partial derivative of the scoring rule with respect to PO7 and you get the PO7 weight; with respect to PO8, the PO8 weight. So the gradient of the scoring rule is w itself. The boundary is the "score = 0" contour, and the gradient is always perpendicular to contours (Section 0), so w is perpendicular to the boundary. The scoring rule is also linear (Case 1 in Section 0), so walking along w, the score grows at a constant rate equal to the length of w.</p>
+<p>Below are the actual results computed with sklearn on the 14 points; click a point in the figure or a row in the table to compare.</p>
+
+<div class="fig">
+  <div class="fig-cap">Figure 3 · hard-margin linear SVM, computed with sklearn SVC</div>
+  <svg class="plot" id="p3" viewBox="0 0 560 400" role="img" aria-label="SVM scatter, boundary and each point's alpha"></svg>
+  <p class="note"><span class="ca">● Face A</span> <span class="cb">■ Face B</span> <span class="cg">◯ Support vector; bigger ring = bigger α</span> Solid line is the boundary, dashed lines are score ±1</p>
+  <div class="map"><table id="t3">
+    <thead><tr><th>Point</th><th>Class</th><th class="num">Coordinates (PO7, PO8)</th><th class="num">Score wᵀx+b</th><th class="num">α</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <p class="note" id="wcalc"></p>
+</div>
+
+<h2><span class="step">5</span>The remaining step: the dual problem and SMO</h2>
+<p>Since w can be built from the α values, we no longer need to search for w directly; instead we search for those 14 α values. The problem rephrased as "find α" is called the <b>dual problem</b>; it has exactly the same answer as the original problem, just with a different set of unknowns. The SMO algorithm mentioned yesterday solves this problem.</p>
+<p>The dual problem has one condition: <b>the α values of all class A points must add up to the same total as those of all class B points</b>. You can check it in Figure 3: class A gives 0.618 + 0.514 = 1.132, class B gives 1.132, exactly equal. Change only one α and the two sides no longer match, so SMO must adjust at least two α values at a time, one changing and the other compensating. That is why it "picks two at a time".</p>
+<p>The soft-margin version (the one with parameter C) adds only one condition: no α may exceed C. In other words, each point's influence is capped, so points on the wrong side cannot pull the boundary without limit.</p>
+
+<h2><span class="step">✓</span>In one sentence</h2>
+<p class="callout">Lagrange multipliers are a method for "minimising under conditions": at the optimum, the objective's gradient is parallel to the constraint's gradient, and the multiple is the multiplier. With inequality constraints, a constraint that is not pressed against its boundary has multiplier 0. SVM gives each data point a constraint; the points pressed against the dashed lines have multipliers greater than 0, they are the support vectors, and the boundary is determined by them alone.</p>
+</main>
+
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function mkScale(x0,x1,y0,y1,W,H,pad){
+  const sx=(W-2*pad)/(x1-x0), sy=(H-2*pad)/(y1-y0);
+  return {X:x=>pad+(x-x0)*sx, Y:y=>H-pad-(y-y0)*sy, sx, sy};
+}
+function axes(svg,s,x0,x1,y0,y1,step){
+  const g=el("g",{},svg);
+  for(let v=Math.ceil(x0/step)*step;v<=x1+1e-9;v+=step)el("line",{x1:s.X(v),x2:s.X(v),y1:s.Y(y0),y2:s.Y(y1),stroke:"var(--grid)","stroke-width":1},g);
+  for(let v=Math.ceil(y0/step)*step;v<=y1+1e-9;v+=step)el("line",{x1:s.X(x0),x2:s.X(x1),y1:s.Y(v),y2:s.Y(v),stroke:"var(--grid)","stroke-width":1},g);
+  if(x0<0&&x1>0)el("line",{x1:s.X(0),x2:s.X(0),y1:s.Y(y0),y2:s.Y(y1),stroke:"var(--line)","stroke-width":1.2},g);
+  if(y0<0&&y1>0)el("line",{x1:s.X(x0),x2:s.X(x1),y1:s.Y(0),y2:s.Y(0),stroke:"var(--line)","stroke-width":1.2},g);
+  return g;
+}
+function arrow(g,x1,y1,x2,y2,color,w){
+  el("line",{x1,y1,x2,y2,stroke:color,"stroke-width":w||2.5,"stroke-linecap":"round"},g);
+  const a=Math.atan2(y2-y1,x2-x1),h=9;
+  el("path",{d:`M${x2},${y2} L${x2-h*Math.cos(a-0.45)},${y2-h*Math.sin(a-0.45)} L${x2-h*Math.cos(a+0.45)},${y2-h*Math.sin(a+0.45)} Z`,fill:color},g);
+}
+const f2=n=>(Math.abs(n)<0.005?0:n).toFixed(2);
+
+/* ---------- Figure 1 ---------- */
+(()=>{
+  const svg=$("p1"),W=360,H=360,x0=-1,x1=3.2,y0=-1,y1=3.2;
+  const s=mkScale(x0,x1,y0,y1,W,H,18);
+  axes(svg,s,x0,x1,y0,y1,1);
+  const cg=el("g",{},svg);
+  [0.5,1,1.5,2,2.5,3,3.5].forEach(r=>el("circle",{cx:s.X(0),cy:s.Y(0),r:r*s.sx,fill:"none",stroke:"var(--f)","stroke-opacity":.28,"stroke-width":1},cg));
+  el("text",{x:s.X(0)+5,y:s.Y(0)+14},svg).textContent="origin";
+  el("line",{x1:s.X(-1),y1:s.Y(3),x2:s.X(3.2),y2:s.Y(-1.2),stroke:"var(--g)","stroke-width":2.5},svg);
+  el("text",{x:s.X(2.35),y:s.Y(-0.62),fill:"var(--g)"},svg).textContent="x + y = 2";
+  const cur=el("circle",{fill:"none",stroke:"var(--f)","stroke-width":2},svg);
+  const ag=el("g",{},svg);
+  const dot=el("circle",{r:6,fill:"var(--ink)"},svg);
+  const t=$("t1");
+  function draw(){
+    const tv=+t.value,x=1+tv,y=1-tv,f=x*x+y*y;
+    $("t1v").textContent=tv.toFixed(2);
+    cur.setAttribute("cx",s.X(0));cur.setAttribute("cy",s.Y(0));cur.setAttribute("r",Math.sqrt(f)*s.sx);
+    dot.setAttribute("cx",s.X(x));dot.setAttribute("cy",s.Y(y));
+    ag.innerHTML="";
+    const gf=[2*x,2*y],L=Math.hypot(...gf),k=0.75/L;
+    arrow(ag,s.X(x),s.Y(y),s.X(x+gf[0]*k),s.Y(y+gf[1]*k),"var(--f)");
+    const kg=0.6/Math.SQRT2;
+    arrow(ag,s.X(x),s.Y(y),s.X(x+kg),s.Y(y+kg),"var(--g)");
+    const ang=Math.acos(Math.min(1,(gf[0]+gf[1])/(L*Math.SQRT2)))*180/Math.PI;
+    $("r1xy").textContent=`(${f2(x)}, ${f2(y)})`;
+    $("r1f").textContent=f.toFixed(2);
+    $("r1ang").textContent=ang.toFixed(0)+"°";
+    const best=Math.abs(tv)<0.03;
+    $("r1chip").innerHTML=best
+      ?`<span class="chip" style="color:var(--ok)">Minimum: arrows parallel, circle tangent to line</span>`
+      :`<span class="chip" style="color:var(--muted)">Not the minimum yet: move ${tv>0?"left":"right"} and f gets smaller</span>`;
+  }
+  t.addEventListener("input",draw);draw();
+})();
+
+/* ---------- Figure 2 ---------- */
+(()=>{
+  const svg=$("p2"),W=360,H=360,x0=-2.5,x1=3,y0=-2.5,y1=3;
+  const s=mkScale(x0,x1,y0,y1,W,H,18);
+  const shade=el("polygon",{fill:"var(--g)","fill-opacity":.1},svg);
+  axes(svg,s,x0,x1,y0,y1,1);
+  const cg=el("g",{},svg);
+  [0.5,1,1.5,2,2.5,3].forEach(r=>el("circle",{cx:s.X(0),cy:s.Y(0),r:r*s.sx,fill:"none",stroke:"var(--f)","stroke-opacity":.25,"stroke-width":1},cg));
+  const line=el("line",{stroke:"var(--g)","stroke-width":2.5},svg);
+  const lab=el("text",{fill:"var(--g)"},svg);
+  const cur=el("circle",{fill:"none",stroke:"var(--f)","stroke-width":2},svg);
+  const dot=el("circle",{r:6.5,fill:"var(--ink)"},svg);
+  const c=$("c2");
+  function draw(){
+    const cv=+c.value;
+    $("c2v").textContent=cv.toFixed(2);
+    // feasible half-plane x+y>=c clipped to box
+    const pts=[[x0,cv-x0],[cv-y0,y0],[x1,y0],[x1,y1],[x0,y1]];
+    const poly=[];
+    const corners=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+    for(let i=0;i<4;i++){
+      const a=corners[i],b=corners[(i+1)%4];
+      const ia=a[0]+a[1]>=cv,ib=b[0]+b[1]>=cv;
+      if(ia)poly.push(a);
+      if(ia!==ib){const t=(cv-a[0]-a[1])/((b[0]+b[1])-(a[0]+a[1]));poly.push([a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])]);}
+    }
+    shade.setAttribute("points",poly.map(p=>s.X(p[0])+","+s.Y(p[1])).join(" "));
+    line.setAttribute("x1",s.X(x0));line.setAttribute("y1",s.Y(cv-x0));
+    line.setAttribute("x2",s.X(x1));line.setAttribute("y2",s.Y(cv-x1));
+    lab.setAttribute("x",s.X(Math.min(2.2,cv+2.4)));lab.setAttribute("y",s.Y(cv-Math.min(2.2,cv+2.4))-6);
+    lab.textContent="x + y = "+cv.toFixed(2);
+    const active=cv>0;
+    const ox=active?cv/2:0,oy=active?cv/2:0,fs=ox*ox+oy*oy,lam=active?cv:0;
+    cur.setAttribute("cx",s.X(0));cur.setAttribute("cy",s.Y(0));cur.setAttribute("r",Math.max(0.001,Math.sqrt(fs))*s.sx);
+    dot.setAttribute("cx",s.X(ox));dot.setAttribute("cy",s.Y(oy));
+    $("r2xy").textContent=`(${f2(ox)}, ${f2(oy)})`;
+    $("r2f").textContent=fs.toFixed(2);
+    $("r2l").textContent=lam.toFixed(2);
+    $("r2chip").innerHTML=active
+      ?`<span class="chip" style="color:var(--g)">Constraint active · λ &gt; 0</span>`
+      :`<span class="chip" style="color:var(--muted)">Constraint inactive · λ = 0</span>`;
+    $("r2txt").textContent=active
+      ?`The origin is outside the shaded region, so the optimum is pushed onto the boundary. λ = ${lam.toFixed(2)}: raise c by another 0.1 and f* increases by about ${(lam*0.1).toFixed(2)}.`
+      :"The origin is already inside the shaded region (it satisfies the condition), so the optimum is the origin itself. The constraint makes no difference, so λ = 0.";
+  }
+  c.addEventListener("input",draw);draw();
+})();
+
+/* ---------- Figure 3 ---------- */
+(()=>{
+  const D={"X":[[-4.2,-1.6],[-3.6,-0.8],[-4.8,-2.6],[-3.0,-1.9],[-5.2,-1.2],[-2.6,-0.6],[-4.0,-3.2],[-1.4,-3.6],[-0.8,-2.6],[-2.0,-4.4],[-0.4,-3.9],[-1.6,-5.2],[-2.4,-3.3],[-0.9,-4.8]],
+    "y":[-1,-1,-1,-1,-1,-1,-1,1,1,1,1,1,1,1],
+    "alpha":[0,0,0,0.6181,0,0,0.5137,0,0,0,0,0,1.1318,0],
+    "w":[1.1927,-0.9167],"b":0.837};
+  const svg=$("p3"),W=560,H=400,x0=-6,x1=0.4,y0=-6,y1=0.2;
+  const pad=28;
+  const sx=(W-2*pad)/(x1-x0),sy=(H-2*pad)/(y1-y0),sc=Math.min(sx,sy);
+  const ox=(W-sc*(x1-x0))/2,oy=(H-sc*(y1-y0))/2;
+  const X=x=>ox+(x-x0)*sc,Y=y=>H-oy-(y-y0)*sc;
+  const s={X,Y};
+  axes(svg,s,x0,x1,y0,y1,1);
+  for(let v=-6;v<=0;v+=2){el("text",{x:X(v),y:Y(y0)+16,"text-anchor":"middle"},svg).textContent=v;el("text",{x:X(x0)-6,y:Y(v)+4,"text-anchor":"end"},svg).textContent=v;}
+  el("text",{x:X(x1)-2,y:Y(y0)-6,"text-anchor":"end"},svg).textContent="PO7";
+  el("text",{x:X(x0)+4,y:Y(y1)+12},svg).textContent="PO8";
+  const [w1,w2]=D.w,b=D.b;
+  const yAt=(x,k)=>(k-b-w1*x)/w2;
+  // margin band
+  const band=[[x0,yAt(x0,1)],[x1,yAt(x1,1)],[x1,yAt(x1,-1)],[x0,yAt(x0,-1)]];
+  el("clipPath",{id:"clip3"},svg).appendChild(el("rect",{x:X(x0),y:Y(y1),width:X(x1)-X(x0),height:Y(y0)-Y(y1)}));
+  const cg=el("g",{"clip-path":"url(#clip3)"},svg);
+  el("polygon",{points:band.map(p=>X(p[0])+","+Y(p[1])).join(" "),fill:"var(--g)","fill-opacity":.08},cg);
+  [1,-1].forEach(k=>el("line",{x1:X(x0),y1:Y(yAt(x0,k)),x2:X(x1),y2:Y(yAt(x1,k)),stroke:"var(--muted)","stroke-dasharray":"6 5","stroke-width":1.3},cg));
+  el("line",{x1:X(x0),y1:Y(yAt(x0,0)),x2:X(x1),y2:Y(yAt(x1,0)),stroke:"var(--ink)","stroke-width":2.2},cg);
+  const pg=el("g",{class:"pts"},svg);
+  const shapes=[];
+  D.X.forEach((p,i)=>{
+    const a=D.alpha[i],col=D.y[i]<0?"var(--cA)":"var(--cB)";
+    if(a>0)el("circle",{cx:X(p[0]),cy:Y(p[1]),r:9+a*9,fill:"none",stroke:"var(--g)","stroke-width":2},pg);
+    let sh;
+    if(D.y[i]<0)sh=el("circle",{cx:X(p[0]),cy:Y(p[1]),r:6.5,fill:col},pg);
+    else sh=el("rect",{x:X(p[0])-6,y:Y(p[1])-6,width:12,height:12,fill:col},pg);
+    sh.setAttribute("tabindex","0");sh.setAttribute("aria-label","Point "+(i+1));
+    const t=el("text",{x:X(p[0])+(a>0?(14+a*9):10),y:Y(p[1])+4,style:"fill:var(--ink)"},pg);t.textContent=i+1;
+    sh.addEventListener("click",()=>hl(i));sh.addEventListener("focus",()=>hl(i));
+    shapes.push(sh);
+  });
+
+  const tb=document.querySelector("#t3 tbody");
+  const rows=D.X.map((p,i)=>{
+    const sc=w1*p[0]+w2*p[1]+b,a=D.alpha[i];
+    const tr=document.createElement("tr");
+    if(a>0)tr.className="sv";
+    tr.innerHTML=`<td>${i+1}</td><td><span class="${D.y[i]<0?"ca":"cb"}">${D.y[i]<0?"A":"B"}</span></td><td class="num">(${p[0].toFixed(1)}, ${p[1].toFixed(1)})</td><td class="num">${sc>=0?"+":""}${sc.toFixed(2)}</td><td class="num">${a>0?a.toFixed(3):"0"}</td>`;
+    tr.style.cursor="pointer";tr.addEventListener("click",()=>hl(i));
+    tb.appendChild(tr);return tr;
+  });
+  function hl(i){rows.forEach((r,j)=>r.classList.toggle("hl",j===i));shapes.forEach((s,j)=>s.setAttribute("stroke",j===i?"var(--ink)":"none"));shapes.forEach((s,j)=>s.setAttribute("stroke-width",j===i?2.5:0));}
+  const sv=D.alpha.map((a,i)=>[a,i]).filter(v=>v[0]>0);
+  const V=(a,b)=>`<span class="vec"><span>${a}</span><span>${b}</span></span>`;
+  const parts=sv.map(([a,i])=>`${a.toFixed(3)} × (${D.y[i]>0?"+1":"−1"}) × ${V(D.X[i][0],D.X[i][1])}`).join(" + ");
+  $("wcalc").innerHTML=`Of the 14 points only 3 have nonzero α (points ${sv.map(v=>v[1]+1).join(", ")}); their scores are exactly ±1, all on the dashed lines. The other 11 points all have |score| greater than 1 and α = 0.<br>Checking "w is built from the support vectors": each support vector's coordinates × its α, minus sign for class A, plus sign for class B: ${parts} = ${V(w1.toFixed(2),w2.toFixed(2))}, matching the w given by sklearn. margin = 2/‖w‖ = ${(2/Math.hypot(w1,w2)).toFixed(2)} μV.`;
+})();
+})();
+</script>
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function arrow(g,x1,y1,x2,y2,c,w,dash){el("line",{x1,y1,x2,y2,stroke:c,"stroke-width":w||2.6,"stroke-linecap":"round","stroke-dasharray":dash||""},g);const a=Math.atan2(y2-y1,x2-x1),h=10;el("path",{d:`M${x2},${y2} L${x2-h*Math.cos(a-0.42)},${y2-h*Math.sin(a-0.42)} L${x2-h*Math.cos(a+0.42)},${y2-h*Math.sin(a+0.42)} Z`,fill:c},g);}
+const V=(a,b)=>`<span class="vec"><span>${a}</span><span>${b}</span></span>`;
+const f2=v=>(v>=0?"":"−")+Math.abs(v).toFixed(2);
+const T=[{n:13,a:1.1318,s:1,x:[-2.4,-3.3],c:"var(--cB)",cls:"cb"},{n:4,a:0.6181,s:-1,x:[-3.0,-1.9],c:"var(--cA)",cls:"ca"},{n:7,a:0.5137,s:-1,x:[-4.0,-3.2],c:"var(--cA)",cls:"ca"}];
+T.forEach(t=>{t.v=[t.s*t.a*t.x[0],t.s*t.a*t.x[1]];});
+const svg=$("pv"),W=360,H=360,pad=20,X0=-3.4,X1=2.3,Y0=-4.4,Y1=1.3,s=(W-2*pad)/(X1-X0);
+const X=x=>pad+(x-X0)*s,Y=y=>H-pad-(y-Y0)*s;
+for(let v=-3;v<=2;v++)el("line",{x1:X(v),x2:X(v),y1:Y(Y0),y2:Y(Y1),stroke:"var(--grid)"},svg);
+for(let v=-4;v<=1;v++)el("line",{x1:X(X0),x2:X(X1),y1:Y(v),y2:Y(v),stroke:"var(--grid)"},svg);
+el("line",{x1:X(0),x2:X(0),y1:Y(Y0),y2:Y(Y1),stroke:"var(--line)","stroke-width":1.3},svg);
+el("line",{x1:X(X0),x2:X(X1),y1:Y(0),y2:Y(0),stroke:"var(--line)","stroke-width":1.3},svg);
+[-3,-2,-1,1,2].forEach(v=>el("text",{x:X(v),y:Y(0)+14,"text-anchor":"middle"},svg).textContent=v);
+[-4,-3,-2,-1,1].forEach(v=>el("text",{x:X(0)-6,y:Y(v)+4,"text-anchor":"end"},svg).textContent=v);
+el("circle",{cx:X(0),cy:Y(0),r:3.5,fill:"var(--ink)"},svg);
+el("text",{x:X(0)+6,y:Y(0)-6},svg).textContent="origin";
+const g=el("g",{},svg);
+const sl=$("sv");
+function draw(){
+  const k=+sl.value;g.innerHTML="";
+  let p=[0,0];
+  T.forEach((t,i)=>{
+    const q=[p[0]+t.v[0],p[1]+t.v[1]];
+    if(i<k){arrow(g,X(p[0]),Y(p[1]),X(q[0]),Y(q[1]),t.c);
+      const mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2;
+      const lab=el("text",{x:X(mx)+(i===0?-8:8),y:Y(my)+(i===0?0:-6),"text-anchor":i===0?"end":"start",style:`fill:${t.c}`},g);
+      lab.textContent=`${t.s>0?"+":"−"}${t.a.toFixed(3)} × x${t.n===13?"₁₃":t.n===4?"₄":"₇"}`;}
+    else el("line",{x1:X(p[0]),y1:Y(p[1]),x2:X(q[0]),y2:Y(q[1]),stroke:"var(--line)","stroke-dasharray":"3 4"},g);
+    p=q;
+  });
+  let sum=[0,0];T.slice(0,k).forEach(t=>{sum[0]+=t.v[0];sum[1]+=t.v[1];});
+  if(k>0&&k<3)arrow(g,X(0),Y(0),X(sum[0]),Y(sum[1]),"var(--muted)",1.6,"5 4");
+  if(k===3){arrow(g,X(0),Y(0),X(sum[0]),Y(sum[1]),"var(--g)",3.4);el("text",{x:X(sum[0])+8,y:Y(sum[1])+14,style:"fill:var(--g);font-size:13px;font-weight:600"},g).textContent="w";}
+  $("svv").textContent=k+" / 3";
+  $("rvterms").innerHTML=T.map((t,i)=>`<div class="kv" style="opacity:${i<k?1:.35};flex-direction:column;align-items:flex-start;gap:2px"><span class="${t.cls}">Point ${t.n} (${t.s>0?"class B, take +":"class A, take −"})</span><span style="white-space:nowrap">${t.s>0?"+":"−"}${t.a.toFixed(3)} × ${V(t.x[0].toFixed(1),t.x[1].toFixed(1))} = ${V(f2(t.v[0]),f2(t.v[1]))}</span></div>`).join("");
+  $("rvsum").innerHTML=V(f2(sum[0]),f2(sum[1]));
+  $("rvchip").innerHTML=k===3?`<span class="chip" style="color:var(--ok)">Matches the sklearn w = ${V("1.19","−0.92")}</span>`:`<span class="chip" style="color:var(--muted)">${3-k} more term${3-k>1?"s":""} to go</span>`;
+}
+sl.addEventListener("input",draw);draw();
+})();
+</script>
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+const w1=1.1927,w2=-0.9167,b=0.837,nw=Math.hypot(w1,w2),u=[w1/nw,w2/nw],x0=[-2.4,-3.3];
+const score=(x,y)=>w1*x+w2*y+b;
+const svg=$("pw"),W=360,H=360,pad=18,X0=-4.4,X1=-1.4,Y0=-4.4,Y1=-1.4,s=(W-2*pad)/(X1-X0);
+const X=x=>pad+(x-X0)*s,Y=y=>H-pad-(y-Y0)*s;
+for(let v=-4;v<=-1.5;v+=0.5){el("line",{x1:X(v),x2:X(v),y1:Y(Y0),y2:Y(Y1),stroke:"var(--grid)"},svg);el("line",{x1:X(X0),x2:X(X1),y1:Y(v),y2:Y(v),stroke:"var(--grid)"},svg);}
+el("clipPath",{id:"pwc"},svg).appendChild(el("rect",{x:X(X0),y:Y(Y1),width:X(X1)-X(X0),height:Y(Y0)-Y(Y1)}));
+const g=el("g",{"clip-path":"url(#pwc)"},svg);
+const yAt=(x,k)=>(k-b-w1*x)/w2;
+el("polygon",{points:[[X0,yAt(X0,1)],[X1,yAt(X1,1)],[X1,yAt(X1,-1)],[X0,yAt(X0,-1)]].map(p=>X(p[0])+","+Y(p[1])).join(" "),fill:"var(--g)","fill-opacity":.08},g);
+[1,-1].forEach(k=>el("line",{x1:X(X0),y1:Y(yAt(X0,k)),x2:X(X1),y2:Y(yAt(X1,k)),stroke:"var(--muted)","stroke-dasharray":"6 5","stroke-width":1.4},g));
+el("line",{x1:X(X0),y1:Y(yAt(X0,0)),x2:X(X1),y2:Y(yAt(X1,0)),stroke:"var(--ink)","stroke-width":2.2},g);
+const lab=(x,k,t)=>{const y=yAt(x,k);el("text",{x:X(x)+6,y:Y(y)-6},svg).textContent=t;};
+lab(-1.95,1,"score +1");lab(-2.25,0,"score 0");lab(-4.38,-1,"score −1");
+const pts=[[-3.0,-1.9,-1],[-4.0,-3.2,-1],[-2.6,-0.6,-1],[-1.4,-3.6,1],[-2.0,-4.4,1],[-2.4,-3.3,1]];
+pts.forEach(p=>{if(p[2]<0)el("circle",{cx:X(p[0]),cy:Y(p[1]),r:5,fill:"var(--cA)",opacity:.45},g);else el("rect",{x:X(p[0])-5,y:Y(p[1])-5,width:10,height:10,fill:"var(--cB)",opacity:.45},g);});
+el("text",{x:X(x0[0])+10,y:Y(x0[1])+16},svg).textContent="point 13 x₀";
+const path=el("line",{x1:X(x0[0]),y1:Y(x0[1]),stroke:"var(--g)","stroke-width":3,"stroke-linecap":"round"},svg);
+el("circle",{cx:X(x0[0]),cy:Y(x0[1]),r:5,fill:"var(--cB)"},svg);
+const dot=el("circle",{r:7,fill:"var(--g)",stroke:"var(--surface)","stroke-width":2},svg);
+const cs=$("cw"),CW=260,CH=170,l=34,r=10,t=12,bt=26,dmax=1.33;
+const CX=d=>l+d/dmax*(CW-l-r),CY=v=>t+(1.2-v)/2.4*(CH-t-bt);
+[1,0,-1].forEach(v=>{el("line",{x1:l,x2:CW-r,y1:CY(v),y2:CY(v),stroke:v===0?"var(--ink)":"var(--line)","stroke-width":v===0?1.5:1,"stroke-dasharray":v===0?"":"4 4"},cs);el("text",{x:l-5,y:CY(v)+4,"text-anchor":"end"},cs).textContent=(v>0?"+":"")+v;});
+[0,0.66,1.33].forEach(d=>{el("text",{x:CX(d),y:CH-bt+16,"text-anchor":d===1.33?"end":"middle"},cs).textContent=d;});
+el("text",{x:l,y:CH-2},cs).textContent="distance walked d";
+el("text",{x:CW-r,y:CY(0)-5,"text-anchor":"end"},cs).textContent="boundary";
+el("line",{x1:CX(0),y1:CY(1),x2:CX(dmax),y2:CY(1-nw*dmax),stroke:"var(--g)","stroke-width":2.5},cs);
+const vl=el("line",{stroke:"var(--muted)","stroke-dasharray":"2 3"},cs);
+const cd=el("circle",{r:5,fill:"var(--g)"},cs);
+const sl=$("dw");
+function draw(){const d=+sl.value,x=x0[0]-d*u[0],y=x0[1]-d*u[1],sc=score(x,y),fm=1-nw*d;
+  path.setAttribute("x2",X(x));path.setAttribute("y2",Y(y));dot.setAttribute("cx",X(x));dot.setAttribute("cy",Y(y));
+  $("dwv").textContent=d.toFixed(3);$("rwxy").textContent=`(${x.toFixed(2)}, ${y.toFixed(2)})`;
+  const f=v=>(Math.abs(v)<0.005?"0.00":(v>0?"+":"")+v.toFixed(2));
+  $("rwsc").textContent=f(sc);$("rwfm").textContent=f(fm);
+  vl.setAttribute("x1",CX(d));vl.setAttribute("x2",CX(d));vl.setAttribute("y1",CY(1.2));vl.setAttribute("y2",CY(-1.2));
+  cd.setAttribute("cx",CX(d));cd.setAttribute("cy",CY(fm));
+  let chip;
+  if(d<0.005)chip=`<span class="chip" style="color:var(--muted)">On the +1 dashed line, score = 1</span>`;
+  else if(Math.abs(fm)<0.012)chip=`<span class="chip" style="color:var(--ok)">Reached the boundary: score = 0, d = 1/‖w‖ ≈ 0.66</span>`;
+  else if(fm>0)chip=`<span class="chip" style="color:var(--g)">Not there yet; the score is still positive</span>`;
+  else if(fm>-0.988)chip=`<span class="chip" style="color:var(--muted)">Crossed the boundary; the score is now negative</span>`;
+  else chip=`<span class="chip" style="color:var(--ok)">Reached the −1 dashed line: walked 2/‖w‖ ≈ 1.33, which is the margin</span>`;
+  $("rwchip").innerHTML=chip;}
+sl.addEventListener("input",draw);draw();
+})();
+</script>
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function arrow(g,x1,y1,x2,y2,c){el("line",{x1,y1,x2,y2,stroke:c,"stroke-width":2.5,"stroke-linecap":"round"},g);const a=Math.atan2(y2-y1,x2-x1),h=9;el("path",{d:`M${x2},${y2} L${x2-h*Math.cos(a-0.45)},${y2-h*Math.sin(a-0.45)} L${x2-h*Math.cos(a+0.45)},${y2-h*Math.sin(a+0.45)} Z`,fill:c},g);}
+function plane(svg,x0,x1,y0,y1){
+  const W=360,H=360,pad=18,s=(W-2*pad)/(x1-x0);
+  const X=x=>pad+(x-x0)*s,Y=y=>H-pad-(y-y0)*s;
+  for(let v=Math.ceil(x0*2)/2;v<=x1;v+=0.5)el("line",{x1:X(v),x2:X(v),y1:Y(y0),y2:Y(y1),stroke:"var(--grid)"},svg);
+  for(let v=Math.ceil(y0*2)/2;v<=y1;v+=0.5)el("line",{x1:X(x0),x2:X(x1),y1:Y(v),y2:Y(v),stroke:"var(--grid)"},svg);
+  el("clipPath",{id:svg.id+"c"},svg).appendChild(el("rect",{x:X(x0),y:Y(y1),width:X(x1)-X(x0),height:Y(y0)-Y(y1)}));
+  return {X,Y,s,clip:`url(#${svg.id}c)`};
+}
+function chart(svg,dmax,ymax,act,pred){
+  const W=260,H=150,l=34,r=10,t=10,b=26;
+  const X=d=>l+d/dmax*(W-l-r),Y=v=>H-b-v/ymax*(H-t-b);
+  el("line",{x1:l,x2:W-r,y1:Y(0),y2:Y(0),stroke:"var(--line)"},svg);
+  el("line",{x1:l,x2:l,y1:Y(0),y2:Y(ymax),stroke:"var(--line)"},svg);
+  for(let v=0;v<=ymax+1e-9;v+=ymax/4){el("text",{x:l-5,y:Y(v)+4,"text-anchor":"end"},svg).textContent=v.toFixed(0);}
+  [0,0.5,1].forEach(d=>{el("text",{x:X(d),y:H-b+15,"text-anchor":"middle"},svg).textContent=d;});
+  el("text",{x:W-r,y:H-b+15,"text-anchor":"end"},svg).textContent="d";
+  const path=fn=>{let s="";for(let i=0;i<=60;i++){const d=dmax*i/60;s+=(i?"L":"M")+X(d)+","+Y(fn(d));}return s;};
+  el("path",{d:path(act),fill:"none",stroke:"var(--g)","stroke-width":3},svg);
+  el("path",{d:path(pred),fill:"none",stroke:"var(--f)","stroke-width":2,"stroke-dasharray":"6 4"},svg);
+  const vline=el("line",{stroke:"var(--muted)","stroke-dasharray":"2 3"},svg);
+  const pa=el("circle",{r:4.5,fill:"var(--g)"},svg),pp=el("circle",{r:3.5,fill:"var(--f)"},svg);
+  return d=>{vline.setAttribute("x1",X(d));vline.setAttribute("x2",X(d));vline.setAttribute("y1",Y(0));vline.setAttribute("y2",Y(ymax));
+    pa.setAttribute("cx",X(d));pa.setAttribute("cy",Y(act(d)));pp.setAttribute("cx",X(d));pp.setAttribute("cy",Y(pred(d)));};
+}
+/* Case A: linear */
+(()=>{
+  const svg=$("gA"),P=plane(svg,-0.3,1.3,-0.3,1.3);
+  const g=el("g",{"clip-path":P.clip},svg);
+  for(let k=-2;k<=10;k++){
+    const xa=-0.3,xb=1.3,ya=(k-3*xa)/4,yb=(k-3*xb)/4;
+    el("line",{x1:P.X(xa),y1:P.Y(ya),x2:P.X(xb),y2:P.Y(yb),stroke:"var(--f)","stroke-opacity":k%5===0?.6:.28,"stroke-width":k%5===0?1.6:1},g);
+  }
+  [[0,"f = 0"],[5,"f = 5"]].forEach(([k,t])=>{const x=k===0?-0.25:0.85,y=(k-3*x)/4;el("text",{x:P.X(x)+4,y:P.Y(y)-6,style:"fill:var(--f)"},svg).textContent=t;});
+  el("line",{x1:P.X(0),y1:P.Y(0),x2:P.X(0.6*1.4),y2:P.Y(0.8*1.4),stroke:"var(--muted)","stroke-dasharray":"4 4"},svg);
+  const ag=el("g",{},svg);arrow(ag,P.X(0),P.Y(0),P.X(0.6*0.35),P.Y(0.8*0.35),"var(--ink)");
+  el("circle",{cx:P.X(0),cy:P.Y(0),r:4,fill:"var(--muted)"},svg);
+  const dot=el("circle",{r:6.5,fill:"var(--g)"},svg);
+  const upd=chart($("cA"),1.4,8,d=>5*d,d=>5*d);
+  const s=$("dA");
+  function draw(){const d=+s.value,x=0.6*d,y=0.8*d;dot.setAttribute("cx",P.X(x));dot.setAttribute("cy",P.Y(y));
+    $("dAv").textContent=d.toFixed(2);$("rAxy").textContent=`(${x.toFixed(2)}, ${y.toFixed(2)})`;
+    $("rAact").textContent=(3*x+4*y).toFixed(3);$("rApred").textContent=(5*d).toFixed(3);$("rAgap").textContent=Math.abs(3*x+4*y-5*d).toFixed(3);upd(d);}
+  s.addEventListener("input",draw);draw();
+})();
+/* Case B: bowl */
+(()=>{
+  const svg=$("gB"),P=plane(svg,-0.2,2.6,-0.2,2.6);
+  const g=el("g",{"clip-path":P.clip},svg);
+  for(let k=1;k<=14;k++)el("circle",{cx:P.X(0),cy:P.Y(0),r:Math.sqrt(k)*P.s,fill:"none",stroke:"var(--f)","stroke-opacity":k===2?.65:.28,"stroke-width":k===2?1.6:1},g);
+  el("text",{x:P.X(0.08),y:P.Y(1.25),style:"fill:var(--f)"},svg).textContent="f = 2";
+  const r2=Math.SQRT1_2;
+  el("line",{x1:P.X(1),y1:P.Y(1),x2:P.X(1+1.4*r2),y2:P.Y(1+1.4*r2),stroke:"var(--muted)","stroke-dasharray":"4 4"},svg);
+  const ag=el("g",{},svg);arrow(ag,P.X(1),P.Y(1),P.X(1+0.35*r2),P.Y(1+0.35*r2),"var(--ink)");
+  el("circle",{cx:P.X(1),cy:P.Y(1),r:4,fill:"var(--muted)"},svg);
+  const cur=el("circle",{fill:"none",stroke:"var(--g)","stroke-width":1.8,"stroke-dasharray":"3 3"},g);
+  const dot=el("circle",{r:6.5,fill:"var(--g)"},svg);
+  const k=2*Math.SQRT2;
+  const upd=chart($("cB"),1.4,8,d=>k*d+d*d,d=>k*d);
+  const s=$("dB");
+  function draw(){const d=+s.value,x=1+d*r2,y=x,f=x*x+y*y,act=f-2,pred=k*d;
+    dot.setAttribute("cx",P.X(x));dot.setAttribute("cy",P.Y(y));cur.setAttribute("cx",P.X(0));cur.setAttribute("cy",P.Y(0));cur.setAttribute("r",Math.sqrt(f)*P.s);
+    $("dBv").textContent=d.toFixed(2);$("rBxy").textContent=`(${x.toFixed(3)}, ${y.toFixed(3)})`;
+    $("rBact").textContent=act.toFixed(3);$("rBpred").textContent=pred.toFixed(3);$("rBgap").textContent=(act-pred).toFixed(3);upd(d);}
+  s.addEventListener("input",draw);draw();
+})();
+})();
+</script>
+
+</body></html>

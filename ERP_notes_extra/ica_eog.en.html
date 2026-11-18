@@ -1,0 +1,591 @@
+<!doctype html><html lang="en"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ICA EOG Removal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Noto+Sans+SC:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same notebook column as HTML1-3. Steps first (input / action / output), then principles, each principle building on the previous figure */
+:root{
+  --bg:#f2f5f6; --surface:#ffffff; --ink:#15212a; --muted:#566673; --line:#d2dbe1; --grid:#e5ebee;
+  --sig:#6a4dd6;      /* accent, output y1 */
+  --raw:#8b98a3;      /* data points */
+  --pos:#d0573a;      /* blink component */
+  --neg:#1c8cc6;      /* alpha component */
+  --ok:#1f8a5b; --cut:#c2385a;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif;
+  --f-math:"STIX Two Text","Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10161a; --surface:#172027; --ink:#e2eaef; --muted:#97a7b3; --line:#2a3741; --grid:#202b33;
+  --sig:#a592ff; --raw:#6c7b87; --pos:#f08a6c; --neg:#4cb8ec; --ok:#4fc28b; --cut:#f0718d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10161a; --surface:#172027; --ink:#e2eaef; --muted:#97a7b3; --line:#2a3741; --grid:#202b33;
+  --sig:#a592ff; --raw:#6c7b87; --pos:#f08a6c; --neg:#4cb8ec; --ok:#4fc28b; --cut:#f0718d; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.8;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5.4vw,44px);line-height:1.12;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.3;margin:20px 0 0;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .step{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--sig);border:1px solid var(--sig);border-radius:4px;padding:0 6px;flex:none}
+h3.pt{margin:14px 0 0;font-family:var(--f-display);font-size:19px;line-height:1.4}
+p{margin:0;max-width:66ch}
+.lede{font-size:18px;color:var(--muted)}
+.eq{font-family:var(--f-math);font-size:21px;text-align:center;padding:14px 10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto;white-space:nowrap}
+.eq i{font-style:italic}
+.vec{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;padding:1px .42em;margin:0 .12em;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor;border-radius:8px;line-height:1.3;font-size:.9em}
+.map{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500;text-transform:uppercase}
+.note{font-size:14.5px;color:var(--muted)}
+code{font-family:var(--f-mono);font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.fig-cap{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+svg.plot{width:100%;height:auto;display:block;max-width:100%}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:0;border-top:2.5px solid;vertical-align:middle;margin-right:6px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:6px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:s}
+.steps>li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;counter-increment:s}
+.steps>li::before{content:counter(s);font-family:var(--f-mono);font-size:14px;color:var(--sig);border:1px solid var(--sig);border-radius:50%;width:28px;height:28px;display:grid;place-items:center;margin-top:2px}
+.steps>li>div{border-bottom:1px solid var(--line);padding-bottom:14px;min-width:0}
+.steps h3{margin:0;font-family:var(--f-display);font-size:17px}
+.steps p{margin-top:4px}
+.lane{display:inline-block;font-family:var(--f-mono);font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;margin-right:6px}
+.io{display:grid;grid-template-columns:3.2em minmax(0,1fr);gap:4px 10px;margin:8px 0 0;font-size:15.5px}
+.io dt{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);padding-top:3px}
+.io dd{margin:0}
+.why{font-size:13.5px;color:var(--sig);margin-top:6px}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.sub{font-size:13.5px;color:var(--muted)}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;font-size:14.5px}
+.ctrl input[type=range]{flex:1 1 220px;accent-color:var(--sig)}
+.ctrl label.v{font-family:var(--f-mono);min-width:8em}
+.ctrl button{font:inherit;font-size:14px;padding:6px 12px;border-radius:6px;border:1px solid var(--sig);background:transparent;color:var(--sig);cursor:pointer}
+.ctrl button:hover{background:color-mix(in srgb,var(--sig) 12%,transparent)}
+.ctrl button:focus-visible,.ctrl input:focus-visible,.chk input:focus-visible{outline:2px solid var(--sig);outline-offset:2px}
+.rd{display:flex;flex-direction:column;gap:8px;font-size:14.5px}
+.rd .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chk{display:flex;align-items:center;gap:8px;font-size:14.5px;cursor:pointer}
+.chk input{accent-color:var(--sig);width:16px;height:16px}
+.stages{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-family:var(--f-mono)}
+@media (max-width:620px){.duo{grid-template-columns:minmax(0,1fr)}}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{font:inherit;font-size:14px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--sig);color:var(--sig);background:color-mix(in srgb,var(--sig) 10%,transparent)}
+.seg button:focus-visible{outline:2px solid var(--sig);outline-offset:2px}
+input[type=range]:disabled{opacity:.4}
+main{max-width:1180px}
+main>*{width:100%;max-width:760px;align-self:center}
+main>.split{max-width:1180px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:20px 30px;align-items:start}
+.split>h3{grid-column:1/-1}
+.split>.txt{display:flex;flex-direction:column;gap:18px;min-width:0}
+.split>.side{position:sticky;top:12px;min-width:0;max-height:calc(100vh - 24px);overflow-y:auto}
+@media (max-width:1020px){.split{grid-template-columns:minmax(0,1fr)}.split>h3{order:-2}.split>.side{order:-1;position:static;max-height:none;overflow:visible}}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">ERP decoding practice · preprocessing notes</div>
+  <h1>ICA EOG Removal</h1>
+<p style="opacity:.7;font-size:.9em">(Translated by Claude Opus 5.5)</p>
+  <p class="lede">Trial rejection throws away the whole stretch of data that contains eye artifacts; ICA subtracts the eye artifacts from the data and keeps the trial. Section 1 explains what ICA is, Section 2 walks through each step in order, and Section 3 explains the principles.</p>
+</header>
+
+<h2><span class="step">1</span>What ICA is</h2>
+<p>Every electrode on the scalp records a mixed signal: brain activity, blinks and eye movements stacked together in different proportions. For example, a blink is large at FP1 and FP2 and only a tiny bit is left at PO8 at the back of the head, but every electrode picks up some of it.</p>
+<p>ICA assumes that at every moment, the voltage at each electrode is obtained by adding up a few <b>mutually independent</b> "components" in fixed proportions:</p>
+<div class="eq"><i>x</i> = <i>A</i> <i>s</i>&emsp;,&emsp;<i>x</i> = <span class="vec"><span><i>x</i><sub>FP1</sub></span><span>⋮</span><span><i>x</i><sub>PO8</sub></span></span>&emsp;,&emsp;<i>s</i> = <span class="vec"><span><i>s</i><sub>1</sub></span><span>⋮</span><span><i>s</i><sub>n</sub></span></span></div>
+<div class="map"><table>
+  <thead><tr><th>Symbol</th><th>What it is</th><th></th></tr></thead>
+  <tbody>
+    <tr><td>x</td><td>The voltage measured at each electrode at a given moment</td><td>Known; this is the only data we have</td></tr>
+    <tr><td>s</td><td>The strength of each component at the same moment. For example, the blink component is large during a blink and close to 0 otherwise</td><td>Unknown</td></tr>
+    <tr><td>A</td><td>Mixing matrix. Column j gives the proportion of component j at each electrode; drawn on the scalp, it is that component's <b>topographic map</b></td><td>Unknown</td></tr>
+    <tr><td>W</td><td>Unmixing matrix, equal to the inverse of A, satisfying s = W x</td><td>Unknown</td></tr>
+  </tbody>
+</table></div>
+<p>ICA computes W from x alone. Once we have W, we also have A (= W⁻¹) and s (= W x). Then we set the eye components to 0 and use x = A s to rebuild each electrode, which gives data without eye artifacts.</p>
+
+<h2><span class="step">2</span>What data each step uses and what it does</h2>
+<p>ICA goes after filtering and before epoching. Steps 1–4 are done on a <b>copy</b>, with the goal of computing W and A and picking out the eye components; steps 5–7 are done on the <b>main data</b>.</p>
+
+<ol class="steps">
+  <li><div><h3><span class="lane" style="color:var(--muted)">Copy</span>Prepare a copy</h3>
+    <dl class="io">
+      <dt>Input</dt><dd>Continuous data already filtered at 0.1–30 Hz</dd>
+      <dt>Action</dt><dd>Make a copy, apply a 1 Hz high-pass to the copy, then exclude segments with especially large amplitude, such as the participant moving around or coughing</dd>
+      <dt>Output</dt><dd>A copy used only for computing ICA. The main data stays unchanged</dd>
+    </dl>
+    <p class="why">Why 1 Hz → Principle ①</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--muted)">Copy</span>Whitening</h3>
+    <dl class="io">
+      <dt>Input</dt><dd>Data from the 30 scalp electrodes in the copy (<b>EOG channels not used</b>)</dd>
+      <dt>Action</dt><dd>Use PCA to turn the data from the 30 electrodes into a new set of signals that are mutually uncorrelated and all have variance 1. After average referencing, 30 electrodes can yield at most 29 such signals, so there are at most 29 components</dd>
+      <dt>Output</dt><dd>Whitened data z, and the whitening matrix (a record of how this transformation was done)</dd>
+    </dl>
+    <p class="why">What whitening is → see Principle ② first, then Principle ③</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--muted)">Copy</span>Rotation</h3>
+    <dl class="io">
+      <dt>Input</dt><dd>Whitened data z</dd>
+      <dt>Action</dt><dd>Start from random directions and rotate a little at a time (gradient ascent) to find a set of directions such that, when the data are projected onto them, each resulting signal is "as non-normal as possible"</dd>
+      <dt>Output</dt><dd>W = rotation matrix × whitening matrix, A = W⁻¹. From these we get each component's <b>time course</b> (a row of s = W x) and <b>topographic map</b> (a column of A)</dd>
+    </dl>
+    <p class="note">The starting point is random, so you need to set <code>random_state</code> in the code to get the same result on every run.</p>
+    <p class="why">Why look for the "most non-normal" directions → Principle ④</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--muted)">Copy</span>Identify the eye components</h3>
+    <dl class="io">
+      <dt>Input</dt><dd>Each component's time course and topographic map, plus the bipolar HEOG and VEOG in the copy. <b>This is the first step where the EOG channels are used</b></dd>
+      <dt>Action</dt><dd>First use <code>find_bads_eog</code> to compute each component's correlation with HEOG and VEOG and take the highly correlated ones as candidates; then inspect the candidates' topographic maps and time courses yourself and confirm using the table below</dd>
+      <dt>Output</dt><dd>The indices of the components to remove, usually 1 to 3</dd>
+    </dl>
+    <div class="map"><table>
+      <thead><tr><th>Component</th><th>Topographic map</th><th>Time course</th></tr></thead>
+      <tbody>
+        <tr><td>Blink</td><td>Concentrated at the forehead, left–right symmetric</td><td>Large individual spikes, almost identical to VEOG</td></tr>
+        <tr><td>Horizontal eye movement</td><td>On both sides of the forehead, positive on one side and negative on the other</td><td>Step-like jumps, almost identical to HEOG</td></tr>
+        <tr><td>Brain activity</td><td>More spread out, often posterior or central</td><td>No correspondence with the EOG</td></tr>
+      </tbody>
+    </table></div>
+    <p class="why">Why not just use the EOG channels as the eye components → Principle ⑤; why you have to identify them yourself every time → Principle ⑥</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--sig)">Main data</span>Remove the eye components</h3>
+    <dl class="io">
+      <dt>Input</dt><dd>The 0.1–30 Hz main data x, W and A from step 3, and the indices selected in step 4</dd>
+      <dt>Action</dt><dd>First compute s = W x, then set the selected components to 0, and finally use x = A s to rebuild each electrode</dd>
+      <dt>Output</dt><dd>Main data with the eye artifacts removed</dd>
+    </dl></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--sig)">Main data</span>Check the result</h3>
+    <dl class="io">
+      <dt>Input</dt><dd>The main data before and after correction</dd>
+      <dt>Action</dt><dd>Compare FP1 and FP2: the blink spikes should be gone. Compare PO8: the N170 should be essentially unchanged</dd>
+      <dt>Output</dt><dd>Confirmation that no brain component was removed by mistake. If the N170 is clearly smaller, go back to step 4 and check again</dd>
+    </dl></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--sig)">Main data</span>Epoch and reject trials</h3>
+    <dl class="io">
+      <dt>Input</dt><dd>The corrected main data, plus the bipolar EOG <b>before correction</b></dd>
+      <dt>Action</dt><dd>Epoch as usual and reject bad trials by threshold. To judge "was there a blink when the stimulus appeared", use the EOG from before correction</dd>
+      <dt>Output</dt><dd>Epochs ready for decoding</dd>
+    </dl>
+    <p class="note">After correction the blink can no longer be seen in the data, but the participant really did not see the image at that moment, so such trials still have to be removed [1].</p></div></li>
+</ol>
+
+<h2><span class="step">3</span>Principles</h2>
+
+<h3 class="pt">① Why compute on a 1 Hz copy but apply it to 0.1 Hz data</h3>
+<p>ICA assumes that each component's proportions across the electrodes are fixed, i.e. A in x = A s does not change over time. Slow drifts come from sweating and slowly changing electrode contact; their proportions across electrodes keep changing, which violates this assumption and degrades the decomposition. So they are removed with a 1 Hz high-pass before computing.</p>
+<p>The resulting W and A only describe "how large a share each component has at each electrode". This share is determined by the positions of the eyes, the brain and the electrodes, and has nothing to do with which frequency band the data were filtered to. So W and A computed on the 1 Hz copy can be applied directly to the 0.1 Hz main data.</p>
+
+<div class="split">
+<h3 class="pt">② First, how to read the scatter plot: one point is one moment</h3>
+<div class="txt">
+<p>Principles ③ and ④ both use scatter plots, so here a minimal example shows how to read one. It uses the following two components and two electrodes.</p>
+<p>The two components are blinks (occasional) and a 10 Hz α brain wave (always present); the two electrodes, picked at random, are FP2 and Pz. The two columns of the mixing matrix A that describe these two components are assumed to be:</p>
+<div class="eq">Blink column = <span class="vec"><span>100</span><span>25</span></span>&emsp;,&emsp;α column = <span class="vec"><span>15</span><span>30</span></span></div>
+<p>Plugging in: when the blink strength is 1, FP2 shows 100 μV and Pz shows 25 μV; when the α strength is 1, FP2 shows 15 μV and Pz shows 30 μV.</p>
+<p>The scatter plot is drawn like this: at each moment FP2 has a value and Pz has a value; use these two values as the x and y coordinates and draw a point. Stack the points for every moment in 8 seconds and you get the cloud in the scatter plot in the figure on the right.</p>
+<p>Click "Play" and watch how the point moves:</p>
+<p>When there is no blink and only the α wave, FP2 and Pz move up and down slightly together with the α wave, and the point goes back and forth along one slanted line in the middle. When a blink happens, FP2 shoots up to about 100 and Pz rises to about 25, so the point dashes to the right along another line and comes back after the blink.</p>
+<p>So the point cloud is made of two "arms". Tick "Show the two columns of A" to see: <b>the direction of each arm is exactly one column of A</b>. For ICA to compute A, it has to find the directions of these two arms.</p>
+<p>Why does finding the arm directions let us separate them? Write x = A s out in terms of the two columns of A:</p>
+<div class="eq"><i>x</i> = <i>s</i><sub>blink</sub> <span class="vec"><span>100</span><span>25</span></span> + <i>s</i><sub>α</sub> <span class="vec"><span>15</span><span>30</span></span></div>
+<p>In other words, every point is reached by starting from where the two arms meet, moving s<sub>blink</sub> units along the blink arm and then s<sub>α</sub> units along the α arm. Once we know the directions of the two arms, we can read each point backwards as "how far along the blink arm and how far along the α arm"; these two numbers are the blink strength and α strength at that moment. Reading every moment this way gives two time courses, pure blink and pure α wave, and that is what "separating" means. After separating, set the blink one to 0 and rebuild, and the electrode data no longer contain the blinks.</p>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">Figure 1 · Two components mixed into the signals of two electrodes (simulated data). Drag the time and watch the point move on the scatter plot</div>
+  <svg class="plot" id="f1t" viewBox="0 0 680 186" role="img" aria-label="Voltage at the FP2 and Pz electrodes over time"></svg>
+  <div class="ctrl">
+    <label class="v" for="f1r">Time = <span id="f1tv"></span> s</label>
+    <input type="range" id="f1r" min="0" max="1599" step="1" value="0">
+    <button id="f1play">Play</button>
+  </div>
+  <div class="duo">
+    <svg class="plot" id="f1s" viewBox="0 0 300 250" role="img" aria-label="Scatter plot of FP2 against Pz"></svg>
+    <div class="rd">
+      <div>Components:</div>
+      <div>FP2 = <span class="num" id="f1a"></span> μV</div>
+      <div>Pz = <span class="num" id="f1b"></span> μV</div>
+      <div>→ Draw one point on the scatter plot, with the FP2 value as x and the Pz value as y</div>
+      <label class="chk"><input type="checkbox" id="f1arm"> Show the two columns of A (directions of the two "arms")</label>
+      <div class="legend"><span><i style="border-color:var(--pos)"></i>Blink column</span><span><i style="border-color:var(--neg)"></i>α column</span></div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="split">
+<h3 class="pt">③ Whitening: making the two arms perpendicular</h3>
+<div class="txt">
+<p>In the raw data, the angle between the two arms is not 90° (about 49° at the start of Figure 2). Whitening has two steps:</p>
+<p>Step one is straightening: find the direction in which the data are most spread out (the dashed line in Figure 2) and rotate the whole cloud so that this direction becomes horizontal; this step is PCA. Step two is scaling: stretch or compress the horizontal and vertical directions separately so that the variance in both directions equals 1.</p>
+<p>Drag all the way to the right and the two arms become perpendicular. This is no coincidence: as long as the two components are independent, their directions are always perpendicular after whitening (the proof is not given here).</p>
+<p>Why whiten first? Because after whitening there are fewer unknowns to find.</p>
+<p>Before whitening, the angle between the two arms is unknown: here it is 49°, but it would be different for another dataset. So the direction of the blink arm and that of the α arm have to be found separately, 2 angles in total. After whitening, the two arms are always perpendicular; once you find one, the other lies perpendicular to it and needs no separate search, leaving only 1 angle.</p>
+<p>Think of two clock hands. Before whitening, the two hands turn independently and you have to adjust two angles; after whitening, the two hands are welded into a right-angled cross, and turning a single angle lines both up with the two arms at once. The θ you drag in Figure 4 is this angle.</p>
+<p>With 30 electrodes the reasoning is the same, just with bigger numbers. Before whitening, solving for W directly means determining 29 × 29 = 841 numbers. After whitening only a rotation remains: among the 29 coordinate axes, every pair of axes has one rotation angle, giving 29 × 28 ÷ 2 = 406 pairs, i.e. 406 angles, less than half of 841. And however you rotate, the data stay uncorrelated with variance 1, so these two conditions no longer need attention.</p>
+<p>But whitening does not tell us which angle to turn the cross to: when Figure 2 is dragged all the way to the right, the two arms are still slanted relative to the axes. That is what step 3 is for.</p>
+<p>Before getting to step 3, though, let us write the first two steps as a formula:</p>
+<div class="eq"><i>z</i> = <i>D</i><sup>−1/2</sup> <i>E</i><sup>T</sup> <i>x</i></div>
+<div class="map"><table>
+  <thead><tr><th>Symbol</th><th>What it is</th></tr></thead>
+  <tbody>
+    <tr><td>E</td><td>Its columns are the direction in which the data are most spread out and the direction perpendicular to it (eigenvectors of the covariance matrix). Multiplying by E<sup>T</sup> is step 1: straightening</td></tr>
+    <tr><td>D</td><td>Diagonal matrix whose diagonal holds the variance along these directions (eigenvalues). Multiplying by D<sup>−1/2</sup> divides each direction by its own standard deviation, i.e. step 2: scaling</td></tr>
+    <tr><td>z</td><td>Whitened data: the components are mutually uncorrelated and all have variance 1</td></tr>
+  </tbody>
+</table></div>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">Figure 2 · The two steps of whitening. Drag the slider and watch the angle between the two arms become 90°</div>
+  <svg class="plot" id="f2" viewBox="0 0 640 330" role="img" aria-label="Scatter plot during whitening"></svg>
+  <div class="ctrl">
+    <label class="v" for="f2r">Progress</label>
+    <input type="range" id="f2r" min="0" max="100" step="1" value="0">
+  </div>
+  <div class="stages"><span>Raw data</span><span>Step 1: straighten</span><span>Step 2: scale</span></div>
+  <div class="rd">
+    <div>Now: <b id="f2st"></b></div>
+    <div>Angle between the two arms = <span class="num" id="f2ang"></span></div>
+  </div>
+  <div class="legend"><span><i style="border-color:var(--pos)"></i>Blink arm</span><span><i style="border-color:var(--neg)"></i>α arm</span><span><i style="border-color:var(--muted);border-top-style:dashed"></i>Direction of greatest spread</span></div>
+</div>
+</div>
+</div>
+
+<div class="split">
+<h3 class="pt">④ Rotation: how to know which angle to turn the cross to</h3>
+<div class="txt">
+<p>First, back to the goal: we want to split each moment's electrode data into "how much blink, how much α wave", i.e. compute s, so that the blink part can be removed. Principle ② said that knowing the directions of the two arms is enough to separate them. After whitening the two arms are perpendicular and only one angle θ is unknown: turn a right-angled cross until it lines up with the two arms, and you have found the arm directions.</p>
+<p>But the algorithm cannot see the arms. To judge whether the cross is aligned, it relies on the shape of the signals' histograms, so let us first get to know three kinds of histogram.</p>
+<p>A histogram tallies up the values a signal takes over all moments: the horizontal axis is the value, and the taller the bar, the more often that value occurs.</p>
+<p>A pure blink signal is 0 most of the time and occasionally very large, so its histogram is a sharp peak near 0 plus a long tail. A pure α wave is a sine, whose values mostly fall near the two extremes, so its histogram is high at both sides and low in the middle. Mix the two together and the histogram becomes closer to a bell shape, i.e. a normal distribution.</p>
+<p>Try this: first click the three buttons to see the three shapes described above. With half blink and half α wave, k drops from 25.7 for pure blink to 6.1, already more bell-shaped than pure blink, but traces of the two sources are still visible. Then tick "Mix in 4 more independent signals": the histogram almost hugs the dashed bell curve and k drops to 0.7. The more independent signals mixed in, the closer to a bell shape.</p>
+<p>The more you mix, the closer to a bell shape: this is the intuition behind the central limit theorem. Conversely, the less a signal's histogram looks like a bell, the more likely it is a "pure" signal that has not been mixed. Below we use this to find θ.</p>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">Figure 3 · Histograms of different signals (simulated data, 40 s). Click a button or drag the slider to see the three shapes</div>
+  <div class="seg" role="group" aria-label="Presets">
+    <button data-w="100">Pure blink</button><button data-w="0">Pure α wave</button><button data-w="50">Half blink, half α wave</button>
+  </div>
+  <div class="ctrl">
+    <label class="v" for="f4r">Blink share <span id="f4wv"></span>%</label>
+    <input type="range" id="f4r" min="0" max="100" step="1" value="100">
+  </div>
+  <label class="chk"><input type="checkbox" id="f4more"> Mix in 4 more independent signals (6 in total, equal shares)</label>
+  <svg class="plot" id="f4h" viewBox="0 0 680 198" role="img" aria-label="Histogram of the output signal, compared with a normal distribution of the same variance"></svg>
+  <div class="sub">Time course of this signal, first 8 seconds</div>
+  <svg class="plot" id="f4t" viewBox="0 0 680 70" role="img" aria-label="Time course of the output signal"></svg>
+  <div class="rd">
+    <div>Current signal: <b id="f4what"></b></div>
+    <div>Kurtosis k = <span class="num" id="f4k"></span> (normal distribution = 0; the farther from 0, the less bell-shaped)</div>
+  </div>
+  <div class="legend"><span><b style="background:var(--sig)"></b>Histogram</span><span><i style="border-color:var(--muted);border-top-style:dashed"></i>Normal distribution with the same variance (bell shape)</span><span>Bar heights are square-root scaled so the long tail is visible</span></div>
+</div>
+</div>
+</div>
+
+<div class="split">
+<h3 class="pt">④ continued: turn the cross and find the least bell-shaped angle</h3>
+<div class="txt">
+<p>What we are looking for by turning the cross is the angle that lines it up with the two arms. Once aligned, the two lines of the cross are the two arm directions, and each point's two coordinates on the cross are exactly what Principle ② called "how far along the blink arm and how far along the α arm", i.e. the separated s.</p>
+<p>How to read it: treat the right-angled cross in the figure on the right as a new set of axes: the solid purple line is the y₁ axis and the dashed green line is the y₂ axis. Each point has two coordinates on these axes, which are the two outputs y₁ and y₂ at that moment. The large dot in the figure is the moment at 2.90 s (a blink is happening), and the two thin dashed lines mark its y₁ and y₂.</p>
+<p>Read every moment this way, then connect all the y₁ values in time order and you get a new time course (the purple one at the lower right); the same goes for y₂ (the green one). So every angle the cross is turned to gives one way of separating: two new time courses.</p>
+<p>Drag θ and watch these two time courses. When the cross is aligned with the two arms, one is pure blink and the other pure α wave, and the separation is correct; when it is not aligned, both curves contain a mix of blink and α wave.</p>
+<p>We can tell whether the separation is right because we know what the true blink and α wave look like, but the algorithm does not. It can only look at the histograms of y₁ and y₂ themselves: when the separation is right, both outputs are pure signals, one histogram a sharp peak plus a long tail and the other high at both sides; when it is wrong, both outputs are mixtures and their histograms look more like a bell. So <b>the angle that makes y₁ and y₂ least bell-shaped is the correct angle</b>.</p>
+<p>How "un-bell-like" something is gets measured with kurtosis:</p>
+<div class="eq"><i>k</i>(<i>y</i>) = mean(<i>y</i><sup>4</sup>) − 3&emsp;,&emsp;<i>J</i> = |<i>k</i>(<i>y</i><sub>1</sub>)| + |<i>k</i>(<i>y</i><sub>2</sub>)|</div>
+<div class="map"><table>
+  <thead><tr><th>Symbol</th><th>What it is</th></tr></thead>
+  <tbody>
+    <tr><td>y</td><td>The values of one output over all moments, already adjusted to mean 0 and variance 1</td></tr>
+    <tr><td>mean(y⁴)</td><td>Each value raised to the fourth power, then averaged. Occasional large values become especially large after the fourth power, so the longer the tail, the larger this average. For a normal distribution it is exactly 3</td></tr>
+    <tr><td>k(y)</td><td>Kurtosis. Normal distribution = 0; a long tail like a blink → a large positive number; a sine → −1.5</td></tr>
+    <tr><td>J</td><td>Sum of the absolute kurtoses of the two outputs. The larger J, the less bell-shaped the two outputs. Step 3 is exactly the search for the angle that maximises J</td></tr>
+  </tbody>
+</table></div>
+<p>The curve at the upper right is J as a function of θ. Drag to the highest point of J and the cross lines up with the two arms; the histograms of y₁ and y₂ are one long-tailed and one high at both sides, and their similarity to the true components is close to 1. Drag to the lowest point and the cross sits exactly between the two arms; both outputs are mixtures and their histograms look more like a bell. Clicking "let the algorithm find it" is the gradient ascent of step 3: start from a random angle and each time turn a little in the direction in which J increases, until reaching the highest point.</p>
+<p class="note">In MNE, <code>method</code> can be <code>fastica</code>, <code>infomax</code> or <code>picard</code>. They use different formulas, and some do not use kurtosis, but the idea is the same: find the rotation that makes the outputs least like a normal distribution.</p>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">Figure 4 · Turning a right-angled cross on the whitened data. Drag θ, or let the algorithm find it</div>
+  <div class="duo">
+    <div><div class="sub">Whitened scatter plot and cross</div><svg class="plot" id="f3s" viewBox="0 0 300 280" role="img" aria-label="Whitened scatter plot with a right-angled cross"></svg></div>
+    <div><div class="sub">J as a function of angle θ</div><svg class="plot" id="f3j" viewBox="0 0 300 280" role="img" aria-label="Curve of J against angle"></svg></div>
+  </div>
+  <div class="ctrl">
+    <label class="v" for="f3r">θ = <span id="f3tv"></span>°</label>
+    <input type="range" id="f3r" min="0" max="179" step="1" value="10">
+    <button id="f3go">Start from a random angle and let the algorithm find it</button>
+  </div>
+  <div class="duo">
+    <div><div class="sub" style="color:var(--sig)">Histogram and time course of output y₁&emsp;k = <span class="num" id="f3k1"></span></div><svg class="plot" id="f3h1" viewBox="0 0 300 150" role="img" aria-label="Histogram and time course of output 1"></svg><div class="note" id="f3c1"></div></div>
+    <div><div class="sub" style="color:var(--ok)">Histogram and time course of output y₂&emsp;k = <span class="num" id="f3k2"></span></div><svg class="plot" id="f3h2" viewBox="0 0 300 150" role="img" aria-label="Histogram and time course of output 2"></svg><div class="note" id="f3c2"></div></div>
+  </div>
+  <div class="legend"><span><b style="background:var(--ink)"></b>Large dot: the moment at 2.90 s (a blink is happening); thin dashed lines mark its y₁ and y₂</span></div>
+  <div class="note" id="f3v"></div>
+</div>
+</div>
+</div>
+
+<h3 class="pt">⑤ Why not just use the EOG channels as the eye components</h3>
+<p>The EOG channels are themselves mixed signals: the lower VEOG electrode and FP2 are both close to the frontal lobe and also record brain activity. If you subtract the EOG channel waveforms directly from each electrode (this is called the regression method, commonly used before ICA came along), you also subtract this part of the brain signal. ICA does not use the EOG channels in its computation and only uses them in step 4 to identify components.</p>
+
+<h3 class="pt">⑥ Component order and sign carry no meaning</h3>
+<p>In Figure 4, every 90° turn of θ gives exactly the same J; the two outputs just swap places. In other words, ICA does not know the order of the components, so after every run you have to identify again which component is the eye artifact.</p>
+<p>Also, multiplying a component by −1 while multiplying the corresponding column of A by −1 leaves x completely unchanged. So the sign of a component is arbitrary; the topographic maps in MNE may have red and blue flipped, and this does not affect the result.</p>
+
+<h2><span class="step">4</span>Why it is worth doing</h2>
+<p>The Luck lab used 15 datasets to test the effect of artifact handling on SVM decoding [2]. ICA correction did not consistently improve accuracy, but they still recommend using ICA to correct blinks and eye movements: if the eyes move differently when looking at faces and when looking at cars, the EOG itself can help the classifier separate the two classes and spuriously inflate accuracy. Only by correcting out the EOG can you be more confident that the classifier is using brain signals.</p>
+
+<h2><span class="step">§</span>References</h2>
+<ol style="margin:0;padding-left:1.4em;font-size:15px;display:flex;flex-direction:column;gap:6px">
+  <li>Kappenman, E. S., Farrens, J. L., Zhang, W., Stewart, A. X., &amp; Luck, S. J. (2021). ERP CORE: An open resource for human event-related potential research. <i>NeuroImage</i>, 225, 117465. <a href="https://doi.org/10.1016/j.neuroimage.2020.117465" style="color:var(--sig)">doi</a></li>
+  <li>Zhang, G., &amp; Luck, S. J. (2025). Assessing the impact of artifact correction and artifact rejection on the performance of SVM-based decoding of EEG signals. Preprint. <a href="https://www.biorxiv.org/content/10.1101/2025.02.22.639684.full.pdf" style="color:var(--sig)">bioRxiv</a></li>
+</ol>
+</main>
+
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg",$=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function tx(p,x,y,s,a){const e=el("text",Object.assign({x,y},a||{}),p);e.textContent=s;return e;}
+let sd=20261101;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647;};
+const randn=()=>{const u=Math.max(rnd(),1e-9),v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+const mean=a=>a.reduce((p,c)=>p+c,0)/a.length;
+
+/* ---------- shared simulated data ---------- */
+const N=1600,fs=200,T=N/fs;
+let bl=new Array(N).fill(0);
+[1.1,2.9,4.3,5.6,7.2].forEach(c=>{const amp=0.88+0.24*rnd();for(let i=0;i<N;i++)bl[i]+=amp*Math.exp(-0.5*((i/fs-c)/0.06)**2);});
+let al=Array.from({length:N},(_,i)=>Math.sin(2*Math.PI*10*i/fs+0.4*Math.sin(i/fs*1.7)));
+const mb=mean(bl);bl=bl.map(v=>v-mb);const ma=mean(al);al=al.map(v=>v-ma);
+{const c=mean(al.map((v,i)=>v*bl[i]))/mean(bl.map(v=>v*v));al=al.map((v,i)=>v-c*bl[i]);} // make the two sources exactly uncorrelated
+const A=[[100,15],[25,30]];             // rows: FP2, Pz ; cols: blink, alpha
+const nz=[0,1].map(()=>Array.from({length:N},()=>0.8*randn()));
+const XX=[0,1].map(r=>bl.map((v,i)=>A[r][0]*v+A[r][1]*al[i]+nz[r][i]));
+const cen=[0,1].map(r=>-(A[r][0]*mb+A[r][1]*0));  // point where the arms meet (sources at 0)
+const X=XX;const sub=[];for(let i=0;i<N;i+=2)sub.push(i);
+
+/* PCA whitening */
+const c11=mean(X[0].map(v=>v*v)),c22=mean(X[1].map(v=>v*v)),c12=mean(X[0].map((v,i)=>v*X[1][i]));
+const hh=(c11+c22)/2,dd=Math.sqrt(((c11-c22)/2)**2+c12*c12),l1=hh+dd,l2=hh-dd;
+let e1=[c12,l1-c11];{const n=Math.hypot(...e1);e1=e1.map(v=>v/n);if(e1[0]<0)e1=e1.map(v=>-v);}
+const phi=Math.atan2(e1[1],e1[0]);
+const ang=(u,v)=>{let a=Math.abs(Math.atan2(u[0]*v[1]-u[1]*v[0],u[0]*v[0]+u[1]*v[1]))*180/Math.PI;return a>90?180-a:a;};
+// linear map at whitening progress p (0..1); display units stay µV-like (axis 1 unscaled)
+function Mp(p){
+  const th=p<=0.5?-phi*(p/0.5):-phi, mu=p<=0.5?0:(p-0.5)/0.5;
+  const c=Math.cos(th),s=Math.sin(th),sx=1,sy=1+mu*(Math.sqrt(l1/l2)-1);
+  return [[sx*c,-sx*s],[sy*s,sy*c]];
+}
+const ap=(M,v)=>[M[0][0]*v[0]+M[0][1]*v[1],M[1][0]*v[0]+M[1][1]*v[1]];
+const colA=j=>[A[0][j],A[1][j]];
+
+/* ---------- figure 1: time curves <-> scatter ---------- */
+(()=>{
+  const X=[0,1].map(r=>XX[r].map(v=>v-cen[r])),c1=[0,0]; // show voltages so that "no blink" sits around 0
+  const st=$("f1t"),L=46,R=672,Xt=i=>L+i/(N-1)*(R-L),k=0.62;
+  const lanes=[{name:"FP2",y0:92,d:X[0]},{name:"Pz",y0:152,d:X[1]}];
+  lanes.forEach(ln=>{
+    el("line",{x1:L,x2:R,y1:ln.y0,y2:ln.y0,stroke:"var(--grid)"},st);
+    tx(st,6,ln.y0+4,ln.name,{style:"fill:var(--ink)"});
+    el("polyline",{points:ln.d.map((v,i)=>Xt(i)+","+(ln.y0-v*k)).join(" "),fill:"none",stroke:"var(--raw)","stroke-width":1},st);
+  });
+  el("line",{x1:L-4,x2:L-4,y1:92,y2:92-100*k,stroke:"var(--muted)"},st);tx(st,L-8,92-50*k+4,"100 μV",{"text-anchor":"end",style:"font-size:9px"});
+  [0,2,4,6,8].forEach(s=>tx(st,L+s/T*(R-L),182,s+" s",{"text-anchor":s===8?"end":s===0?"start":"middle"}));
+  const ph=el("line",{y1:6,y2:170,stroke:"var(--sig)","stroke-width":1.5},st);
+  const pd=lanes.map(()=>el("circle",{r:4,fill:"var(--sig)"},st));
+
+  const ss=$("f1s"),SL=40,SR=292,ST=8,SB=214,xr=[-30,125],sc=(SR-SL)/(xr[1]-xr[0]),yr=[-48,-48+(SB-ST)/sc];
+  const XS=v=>SL+(v-xr[0])*sc,YS=v=>SB-(v-yr[0])*sc;
+  el("line",{x1:SL,x2:SR,y1:YS(0),y2:YS(0),stroke:"var(--grid)"},ss);el("line",{x1:XS(0),x2:XS(0),y1:ST,y2:SB,stroke:"var(--grid)"},ss);
+  [0,50,100].forEach(v=>tx(ss,XS(v),SB+14,v,{"text-anchor":"middle"}));[-40,0,40].forEach(v=>tx(ss,SL-4,YS(v)+4,v,{"text-anchor":"end"}));
+  tx(ss,SR,SB+30,"FP2 (μV) →",{"text-anchor":"end"});tx(ss,SL+4,ST+10,"↑ Pz (μV)",{"text-anchor":"start"});
+  sub.forEach(i=>el("circle",{cx:XS(X[0][i]),cy:YS(X[1][i]),r:1.5,fill:"var(--raw)","fill-opacity":.45},ss));
+  const arms=el("g",{style:"display:none"},ss);
+  const a1=colA(0),a2=colA(1);
+  el("line",{x1:XS(c1[0]),y1:YS(c1[1]),x2:XS(c1[0]+a1[0]*1.1),y2:YS(c1[1]+a1[1]*1.1),stroke:"var(--pos)","stroke-width":2.5},arms);
+  el("line",{x1:XS(c1[0]-a2[0]*1.3),y1:YS(c1[1]-a2[1]*1.3),x2:XS(c1[0]+a2[0]*1.3),y2:YS(c1[1]+a2[1]*1.3),stroke:"var(--neg)","stroke-width":2.5},arms);
+  const gx=el("line",{stroke:"var(--sig)","stroke-dasharray":"3 3"},ss),gy=el("line",{stroke:"var(--sig)","stroke-dasharray":"3 3"},ss);
+  const dot=el("circle",{r:5.5,fill:"var(--sig)",stroke:"var(--surface)","stroke-width":1.5},ss);
+  $("f1arm").addEventListener("change",e=>arms.style.display=e.target.checked?"":"none");
+  function upd(i){
+    ph.setAttribute("x1",Xt(i));ph.setAttribute("x2",Xt(i));
+    lanes.forEach((ln,j)=>{pd[j].setAttribute("cx",Xt(i));pd[j].setAttribute("cy",ln.y0-ln.d[i]*k);});
+    const px=XS(X[0][i]),py=YS(X[1][i]);
+    dot.setAttribute("cx",px);dot.setAttribute("cy",py);
+    gx.setAttribute("x1",px);gx.setAttribute("x2",px);gx.setAttribute("y1",py);gx.setAttribute("y2",SB);
+    gy.setAttribute("x1",SL);gy.setAttribute("x2",px);gy.setAttribute("y1",py);gy.setAttribute("y2",py);
+    $("f1tv").textContent=(i/fs).toFixed(2);$("f1a").textContent=Math.round(X[0][i])||0;$("f1b").textContent=Math.round(X[1][i])||0;
+  }
+  const r=$("f1r");r.addEventListener("input",()=>{stop();upd(+r.value);});
+  let raf=null;const btn=$("f1play");
+  function stop(){if(raf){cancelAnimationFrame(raf);raf=null;btn.textContent="Play";}}
+  btn.addEventListener("click",()=>{
+    if(raf){stop();return;}
+    btn.textContent="Pause";let i=+r.value>=N-2?0:+r.value;
+    const step=()=>{i+=1;if(i>=N){stop();return;}r.value=i;upd(i);raf=requestAnimationFrame(step);};
+    raf=requestAnimationFrame(step);
+  });
+  upd(0);
+})();
+
+/* ---------- figure 2: whitening animation ---------- */
+(()=>{
+  const s=$("f2"),W=640,H=300,cx=W/2,cy=H/2;
+  // fixed scale that fits every stage
+  let mx=1,my=1;[0,.25,.5,.75,1].forEach(p=>{const M=Mp(p);sub.forEach(i=>{const q=ap(M,[X[0][i],X[1][i]]);mx=Math.max(mx,Math.abs(q[0]));my=Math.max(my,Math.abs(q[1]));});});
+  const sc=Math.min((W/2-20)/mx,(H/2-14)/my);
+  el("line",{x1:10,x2:W-10,y1:cy,y2:cy,stroke:"var(--grid)"},s);el("line",{x1:cx,x2:cx,y1:6,y2:H-6,stroke:"var(--grid)"},s);
+  const pts=sub.map(()=>el("circle",{r:1.5,fill:"var(--raw)","fill-opacity":.45},s));
+  const pc=el("line",{stroke:"var(--muted)","stroke-dasharray":"5 4","stroke-width":1.3},s);
+  const arm1=el("line",{stroke:"var(--pos)","stroke-width":2.5},s),arm2=el("line",{stroke:"var(--neg)","stroke-width":2.5},s);
+  const S=q=>[cx+q[0]*sc,cy-q[1]*sc];
+  function upd(p){
+    const M=Mp(p);
+    sub.forEach((i,j)=>{const q=S(ap(M,[X[0][i],X[1][i]]));pts[j].setAttribute("cx",q[0]);pts[j].setAttribute("cy",q[1]);});
+    const d=ap(M,e1),n=Math.hypot(...d),u=[d[0]/n*400,d[1]/n*400],a=S(u),b=S([-u[0],-u[1]]);
+    pc.setAttribute("x1",a[0]);pc.setAttribute("y1",a[1]);pc.setAttribute("x2",b[0]);pc.setAttribute("y2",b[1]);
+    const c=ap(M,cen),v1=ap(M,colA(0)),v2=ap(M,colA(1));
+    let q1=S(c),q2=S([c[0]+v1[0]*1.1,c[1]+v1[1]*1.1]);arm1.setAttribute("x1",q1[0]);arm1.setAttribute("y1",q1[1]);arm1.setAttribute("x2",q2[0]);arm1.setAttribute("y2",q2[1]);
+    q1=S([c[0]-v2[0]*1.3,c[1]-v2[1]*1.3]);q2=S([c[0]+v2[0]*1.3,c[1]+v2[1]*1.3]);arm2.setAttribute("x1",q1[0]);arm2.setAttribute("y1",q1[1]);arm2.setAttribute("x2",q2[0]);arm2.setAttribute("y2",q2[1]);
+    $("f2ang").textContent=ang(v1,v2).toFixed(0)+"°";
+    $("f2st").textContent=p===0?"Raw data":p<0.5?"Step 1, straightening":p===0.5?"Step 1 done: direction of greatest spread is now horizontal":p<1?"Step 2, scaling":"Whitening done";
+  }
+  const r=$("f2r");r.addEventListener("input",()=>upd(r.value/100));upd(0);
+})();
+
+/* ---------- figure 3: rotation ---------- */
+(()=>{
+  const Mw=Mp(1),k1=Math.sqrt(l1);                      // whitened, in units of 1 sd
+  const Z=[0,1].map(r=>X[0].map((v,i)=>(Mw[r][0]*v+Mw[r][1]*X[1][i])/k1));
+  const kurt=y=>{const v=mean(y.map(a=>a*a));return mean(y.map(a=>a**4))/(v*v)-3;};
+  const corr=(a,c)=>Math.abs(mean(a.map((v,i)=>v*c[i]))/Math.sqrt(mean(a.map(v=>v*v))*mean(c.map(v=>v*v))));
+  const proj=th=>{const r=th*Math.PI/180,c=Math.cos(r),s=Math.sin(r);return[Z[0].map((v,i)=>c*v+s*Z[1][i]),Z[0].map((v,i)=>-s*v+c*Z[1][i])];};
+  const Jc=[];for(let d=0;d<180;d++){const[y1,y2]=proj(d);Jc.push(Math.abs(kurt(y1))+Math.abs(kurt(y2)));}
+  const Jmax=Math.max(...Jc),Jmin=Math.min(...Jc);
+  const Jat=th=>{th=((th%180)+180)%180;const i=Math.floor(th),f=th-i;return Jc[i]*(1-f)+Jc[(i+1)%180]*f;};
+  // scatter frame
+  const ss=$("f3s"),cx=150,cy=140;let m=0;sub.forEach(i=>m=Math.max(m,Math.abs(Z[0][i]),Math.abs(Z[1][i])));const sc=128/m;
+  const S=q=>[cx+q[0]*sc,cy-q[1]*sc];
+  el("line",{x1:10,x2:290,y1:cy,y2:cy,stroke:"var(--grid)"},ss);el("line",{x1:cx,x2:cx,y1:6,y2:274,stroke:"var(--grid)"},ss);
+  const c0=ap(Mw,cen).map(v=>v/k1),w1=ap(Mw,colA(0)).map(v=>v/k1),w2=ap(Mw,colA(1)).map(v=>v/k1);
+  let q1=S(c0),q2=S([c0[0]+w1[0]*1.1,c0[1]+w1[1]*1.1]);el("line",{x1:q1[0],y1:q1[1],x2:q2[0],y2:q2[1],stroke:"var(--pos)","stroke-width":5,"stroke-opacity":.28,"stroke-linecap":"round"},ss);
+  q1=S([c0[0]-w2[0]*1.3,c0[1]-w2[1]*1.3]);q2=S([c0[0]+w2[0]*1.3,c0[1]+w2[1]*1.3]);el("line",{x1:q1[0],y1:q1[1],x2:q2[0],y2:q2[1],stroke:"var(--neg)","stroke-width":5,"stroke-opacity":.28,"stroke-linecap":"round"},ss);
+  sub.forEach(i=>{const q=S([Z[0][i],Z[1][i]]);el("circle",{cx:q[0],cy:q[1],r:1.5,fill:"var(--raw)","fill-opacity":.45},ss);});
+  const cross=el("g",{},ss);
+  // J frame
+  const sj=$("f3j"),L=34,R=292,TT=12,B=236,XJ=d=>L+d/180*(R-L),YJ=v=>B-(v-Jmin)/(Jmax-Jmin)*(B-TT)*0.94;
+  [0,45,90,135,180].forEach(d=>{el("line",{x1:XJ(d),x2:XJ(d),y1:TT,y2:B,stroke:"var(--grid)"},sj);tx(sj,XJ(d),B+16,d+"°",{"text-anchor":d===180?"end":d===0?"start":"middle"});});
+  el("polyline",{points:Jc.map((v,d)=>XJ(d)+","+YJ(v)).join(" ")+" "+XJ(180)+","+YJ(Jc[0]),fill:"none",stroke:"var(--ink)","stroke-width":1.6},sj);
+  tx(sj,L-6,YJ(Jmax)+4,"high",{"text-anchor":"end"});tx(sj,L-6,YJ(Jmin)+4,"low",{"text-anchor":"end"});tx(sj,R,B+32,"θ →",{"text-anchor":"end"});
+  const jl=el("line",{y1:TT,y2:B,stroke:"var(--sig)","stroke-dasharray":"3 3"},sj),jd=el("circle",{r:5,fill:"var(--sig)"},sj);
+  function hist(id,y,col){
+    const sv=$(id);sv.innerHTML="";const lo=-6,hi=6,nb=48,cnt=new Array(nb).fill(0);
+    y.forEach(v=>{const k=Math.floor((v-lo)/(hi-lo)*nb);if(k>=0&&k<nb)cnt[k]++;});
+    const mc=Math.max(...cnt),bw=290/nb;
+    cnt.forEach((c,k)=>{const h=Math.sqrt(c/mc)*72;if(h>0)el("rect",{x:5+k*bw,y:80-h,width:bw-1,height:h,fill:col,"fill-opacity":.75},sv);});
+    el("line",{x1:5,x2:295,y1:80,y2:80,stroke:"var(--line)"},sv);tx(sv,150,92,"0",{"text-anchor":"middle"});
+    const my=Math.max(...y.map(Math.abs))||1;
+    el("polyline",{points:y.map((v,i)=>(5+i/(N-1)*290)+","+(124-v/my*22)).join(" "),fill:"none",stroke:col,"stroke-width":1},sv);
+    el("circle",{cx:5+580/(N-1)*290,cy:124-y[580]/my*22,r:4,fill:"var(--ink)",stroke:"var(--surface)","stroke-width":1.2},sv);
+  }
+  function draw(th){
+    $("f3tv").textContent=Math.round(th);
+    cross.innerHTML="";const r=th*Math.PI/180;
+    [[r,"var(--sig)","y₁",""],[r+Math.PI/2,"var(--ok)","y₂","6 4"]].forEach(([a,col,lab,da])=>{
+      const u=[Math.cos(a),Math.sin(a)],p=S([u[0]*m*1.05,u[1]*m*1.05]),q=S([-u[0]*m*1.05,-u[1]*m*1.05]);
+      el("line",{x1:q[0],y1:q[1],x2:p[0],y2:p[1],stroke:col,"stroke-width":2,"stroke-dasharray":da},cross);
+      const t=S([u[0]*m*0.92,u[1]*m*0.92]);tx(cross,t[0]+8,t[1]-6,lab,{style:"fill:"+col+";font-size:13px"});
+    });
+    {const i=580,c=Math.cos(r),s=Math.sin(r),p=[Z[0][i],Z[1][i]],u1=c*p[0]+s*p[1],u2=-s*p[0]+c*p[1];
+     const P=S(p),F1=S([u1*c,u1*s]),F2=S([-u2*s,u2*c]);
+     el("line",{x1:P[0],y1:P[1],x2:F1[0],y2:F1[1],stroke:"var(--sig)","stroke-dasharray":"2 3","stroke-width":1.3},cross);
+     el("line",{x1:P[0],y1:P[1],x2:F2[0],y2:F2[1],stroke:"var(--ok)","stroke-dasharray":"2 3","stroke-width":1.3},cross);
+     el("circle",{cx:F1[0],cy:F1[1],r:3.5,fill:"var(--sig)"},cross);el("circle",{cx:F2[0],cy:F2[1],r:3.5,fill:"var(--ok)"},cross);
+     el("circle",{cx:P[0],cy:P[1],r:6,fill:"var(--ink)",stroke:"var(--surface)","stroke-width":1.5},cross);}
+    jl.setAttribute("x1",XJ(th));jl.setAttribute("x2",XJ(th));jd.setAttribute("cx",XJ(th));jd.setAttribute("cy",YJ(Jat(th)));
+    const [y1,y2]=proj(th);hist("f3h1",y1,"var(--sig)");hist("f3h2",y2,"var(--ok)");
+    $("f3k1").textContent=kurt(y1).toFixed(2);$("f3k2").textContent=kurt(y2).toFixed(2);
+    const r1=[corr(y1,bl),corr(y1,al)],r2=[corr(y2,bl),corr(y2,al)];
+    $("f3c1").textContent=`Similarity to blink |r| = ${r1[0].toFixed(2)}, to α wave = ${r1[1].toFixed(2)}`;
+    $("f3c2").textContent=`Similarity to blink |r| = ${r2[0].toFixed(2)}, to α wave = ${r2[1].toFixed(2)}`;
+    const a=Math.min(r1[0],r2[1])>0.97,b=Math.min(r1[1],r2[0])>0.97;
+    $("f3v").innerHTML=a?"<b style='color:var(--ok)'>Aligned: </b>y₁ is the blink, y₂ is the α wave.":b?"<b style='color:var(--ok)'>Aligned: </b>y₁ is the α wave, y₂ is the blink.":"Not aligned yet: both outputs are mixtures of blink and α wave.";
+  }
+  const sl=$("f3r");let anim=null;
+  sl.addEventListener("input",()=>{if(anim){clearTimeout(anim);anim=null;}draw(+sl.value);});
+  $("f3go").addEventListener("click",()=>{
+    if(anim)clearTimeout(anim);let th=Math.random()*180,n=0;
+    const step=()=>{const g=(Jat(th+1)-Jat(th-1))/2/(Jmax-Jmin);th+=Math.max(-4,Math.min(4,g*120));th=((th%180)+180)%180;
+      sl.value=Math.round(th);draw(th);n++;if(Math.abs(g)>0.001&&n<150)anim=setTimeout(step,45);else anim=null;};
+    sl.value=Math.round(th);draw(th);anim=setTimeout(step,350);
+  });
+  draw(10);
+})();
+
+/* ---------- figure 3: histogram shapes ---------- */
+(()=>{
+  let sd2=777;const r2=()=>{sd2=(sd2*16807)%2147483647;return sd2/2147483647;};
+  const M=8000,fs2=200;
+  const std=a=>{const m=mean(a),v=Math.sqrt(mean(a.map(x=>(x-m)**2)));return a.map(x=>(x-m)/v);};
+  const bumps=(rate,w)=>{const a=new Array(M).fill(0);let t=0.5+r2()*rate;while(t<M/fs2-0.3){const amp=0.85+0.3*r2();const c=t*fs2,lo=Math.max(0,Math.floor(c-5*w)),hi=Math.min(M,Math.ceil(c+5*w));for(let i=lo;i<hi;i++)a[i]+=amp*Math.exp(-0.5*((i-c)/w)**2);t+=rate*(0.6+0.8*r2());}return a;};
+  const blink=std(bumps(4,12));
+  const alpha=std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*10*i/fs2+0.4*Math.sin(i/fs2*1.7))));
+  const others=[
+    std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*6.3*i/fs2+1.1))),
+    std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*17.7*i/fs2+0.3*Math.sin(i/fs2*0.9)))),
+    std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*23.1*i/fs2+2.0))),
+    std(Array.from({length:M},()=>r2()-0.5)),
+  ];
+  const lo=-4,hi=7,nb=55,bw=(hi-lo)/nb;
+  const hs=$("f4h"),L=10,R=670,B=160,H=148,Xh=v=>L+(v-lo)/(hi-lo)*(R-L);
+  const ts=$("f4t");
+  const phi0=x=>Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+  const kurt=y=>{const v=mean(y.map(a=>a*a));return mean(y.map(a=>a**4))/(v*v)-3;};
+  const sl=$("f4r"),more=$("f4more"),btns=[...document.querySelectorAll(".seg button")];
+  function draw(){
+    const w=+sl.value/100,mix=more.checked;
+    sl.disabled=mix;btns.forEach(b=>b.setAttribute("aria-pressed",String(!mix&&+b.dataset.w===+sl.value)));
+    $("f4wv").textContent=sl.value;
+    const y=mix?blink.map((v,i)=>(v+alpha[i]+others[0][i]+others[1][i]+others[2][i]+others[3][i])/Math.sqrt(6))
+               :blink.map((v,i)=>Math.sqrt(w)*v+Math.sqrt(1-w)*alpha[i]);
+    const cnt=new Array(nb).fill(0);y.forEach(v=>{const k=Math.floor((v-lo)/bw);if(k>=0&&k<nb)cnt[k]++;});
+    const dens=cnt.map(c=>c/(M*bw)),pmax=Math.max(...dens,phi0(0));
+    hs.innerHTML="";
+    dens.forEach((d,k)=>{const h=Math.sqrt(d/pmax)*H;if(h>0.3)el("rect",{x:Xh(lo+k*bw)+0.5,y:B-h,width:(R-L)/nb-1,height:h,fill:"var(--sig)","fill-opacity":.75},hs);});
+    const pts=[];for(let x=lo;x<=hi;x+=0.05)pts.push(Xh(x)+","+(B-Math.sqrt(phi0(x)/pmax)*H));
+    el("polyline",{points:pts.join(" "),fill:"none",stroke:"var(--muted)","stroke-width":1.6,"stroke-dasharray":"5 4"},hs);
+    el("line",{x1:L,x2:R,y1:B,y2:B,stroke:"var(--line)"},hs);
+    [-4,-2,0,2,4,6].forEach(v=>tx(hs,Xh(v),B+16,v,{"text-anchor":"middle"}));
+    tx(hs,R,B+30,"value (in SD) →",{"text-anchor":"end"});
+    ts.innerHTML="";const seg=y.slice(0,1600),my=Math.max(4,...seg.map(Math.abs));
+    el("line",{x1:L,x2:R,y1:35,y2:35,stroke:"var(--grid)"},ts);
+    el("polyline",{points:seg.map((v,i)=>(L+i/1599*(R-L))+","+(35-v/my*30)).join(" "),fill:"none",stroke:"var(--sig)","stroke-width":1},ts);
+    $("f4k").textContent=kurt(y).toFixed(2);
+    $("f4what").textContent=mix?"6 independent signals mixed in equal shares":w===1?"Pure blink":w===0?"Pure α wave":`Mix of ${sl.value}% blink and ${100-sl.value}% α wave`;
+  }
+  sl.addEventListener("input",draw);more.addEventListener("change",draw);
+  btns.forEach(b=>b.addEventListener("click",()=>{more.checked=false;sl.value=b.dataset.w;draw();}));
+  draw();
+})();
+})();
+</script>
+
+</body></html>

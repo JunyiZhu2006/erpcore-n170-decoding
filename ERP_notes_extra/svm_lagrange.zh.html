@@ -1,0 +1,690 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>拉格朗日乘子与支持向量</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Noto+Sans+SC:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each idea is text then a live figure you can drag, like a lab notebook page */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#16212b; --muted:#566573; --line:#d4dce3; --grid:#e6ebef;
+  --f:#c2385a;       /* objective / its gradient */
+  --g:#6a4dd6;       /* constraint / its gradient, also page accent */
+  --cA:#1c8cc6; --cB:#d9820d; --ok:#1f8a5b;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif;
+  --f-math:"STIX Two Text","Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11161b; --surface:#182028; --ink:#e3eaf0; --muted:#97a6b3; --line:#2b3742; --grid:#222c35;
+  --f:#f0718d; --g:#a592ff; --cA:#4cb8ec; --cB:#f2a840; --ok:#4fc28b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161b; --surface:#182028; --ink:#e3eaf0; --muted:#97a6b3; --line:#2b3742; --grid:#222c35;
+  --f:#f0718d; --g:#a592ff; --cA:#4cb8ec; --cB:#f2a840; --ok:#4fc28b; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.8;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-direction:column;gap:10px;padding-bottom:6px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5.4vw,44px);line-height:1.12;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.3;margin:18px 0 0;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .step{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--g);border:1px solid var(--g);border-radius:4px;padding:0 6px;flex:none}
+p{margin:0;max-width:66ch}
+.lede{font-size:18px;color:var(--muted)}
+.m{font-family:var(--f-math);font-style:italic;font-size:1.08em;white-space:nowrap}
+.m b{font-weight:600;font-style:normal}
+.cf{color:var(--f);font-weight:500}.cg{color:var(--g);font-weight:500}.ca{color:var(--cA);font-weight:500}.cb{color:var(--cB);font-weight:500}
+.eq{font-family:var(--f-math);font-size:21px;text-align:center;padding:14px 10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto;white-space:nowrap}
+.eq i{font-style:italic}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.fig-cap{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+.fig-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+.fig-row>*{min-width:0}
+svg.plot{width:100%;height:auto;display:block;max-width:100%}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.readout{display:flex;flex-direction:column;gap:8px;font-size:15px}
+.kv{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.kv span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chip{display:inline-block;font-size:14px;font-weight:500;padding:4px 10px;border-radius:999px;border:1px solid currentColor;line-height:1.5}
+.ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl label{font-size:14px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.ctrl label span{font-family:var(--f-mono);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--g)}
+input[type=range]:focus-visible{outline:2px solid var(--g);outline-offset:3px}
+.steps{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;counter-reset:s}
+.steps li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;counter-increment:s}
+.steps li::before{content:counter(s);font-family:var(--f-mono);font-size:13px;color:var(--g);border:1px solid var(--g);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;margin-top:3px}
+.map{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500;text-transform:uppercase}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr.sv td{background:color-mix(in srgb,var(--g) 9%,transparent)}
+tr.hl td{outline:2px solid var(--g);outline-offset:-2px}
+.note{font-size:14.5px;color:var(--muted)}
+.callout{border-left:3px solid var(--g);padding:4px 0 4px 14px;border-radius:0}
+.pts circle,.pts rect{cursor:pointer}
+.vec{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;vertical-align:middle;padding:1px .42em;margin:0 .12em;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor;border-radius:8px;line-height:1.3;font-size:.9em}
+.vec>span{white-space:nowrap}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .15em;line-height:1.3}
+.frac>span:first-child{border-bottom:1.3px solid currentColor;padding:0 .25em}
+.brace{display:inline-flex;flex-direction:column;align-items:center;vertical-align:top}
+.brace>small{font-family:var(--f-body);font-size:12px;color:var(--muted);border-top:1.3px solid var(--muted);padding-top:2px;margin-top:2px;line-height:1.3}
+.derive h4{font-family:var(--f-display);font-size:17px;margin:8px 0 0}
+@media (max-width:620px){.fig-row{grid-template-columns:minmax(0,1fr)}.eq{font-size:18px}}
+@media (prefers-reduced-motion:no-preference){.pulse{transition:opacity .2s}}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">SVM 背后的数学 · 第 1 篇</div>
+  <h1>拉格朗日乘子：为什么只有支持向量算数</h1>
+  <p class="lede">昨天说到 SVM 要在"所有点都在虚线外侧"的条件下让 ‖w‖ 最小。这类"带条件的最小化"就用拉格朗日乘子来解。这一页先用一个二维小问题把它讲清楚，再回到 SVM。每张图都可以拖动。</p>
+</header>
+
+<h2><span class="step">0</span>先认识符号 ∇：梯度</h2>
+<p>下面会反复出现 <span class="m">∇f</span>，读作"f 的梯度"（∇ 这个符号叫 nabla）。它就是把 f 对每个变量的导数排成一个向量。</p>
+<ol class="steps">
+  <li><div><b>一个变量：导数就是斜率。</b><span class="m">f(x) = x²</span>，导数 <span class="m">f′(x) = 2x</span>。在 x = 1 处斜率是 2：x 往右挪一点点，f 大约增加它的 2 倍。</div></li>
+  <li><div><b>两个变量：偏导数。</b><span class="m">f(x, y) = x² + y²</span> 有两个变量，斜率要分方向说。只动 x、把 y 当常数求导，得到 <span class="m">∂f/∂x = 2x</span>，叫对 x 的偏导数；只动 y，得到 <span class="m">∂f/∂y = 2y</span>。∂ 是偏导的符号，算法和普通求导一样，只是把其他变量当成常数。</div></li>
+  <li><div><b>把偏导数排成向量，就是梯度。</b></div></li>
+</ol>
+<div class="eq">∇<i>f</i> = <span class="vec"><span>∂<i>f</i>/∂<i>x</i></span><span>∂<i>f</i>/∂<i>y</i></span></span> = <span class="vec"><span>2<i>x</i></span><span>2<i>y</i></span></span></div>
+<div class="map"><table>
+  <thead><tr><th>在哪个点</th><th class="num">∇f</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>(1, 1)</td><td class="num"><span class="vec"><span>2</span><span>2</span></span></td><td>指向右上方，背离原点</td></tr>
+    <tr><td>(2, 0)</td><td class="num"><span class="vec"><span>4</span><span>0</span></span></td><td>指向正右方；离原点更远，箭头更长</td></tr>
+    <tr><td>(0, 0)</td><td class="num"><span class="vec"><span>0</span><span>0</span></span></td><td>碗底，往哪走都不会立刻变陡，梯度为零</td></tr>
+  </tbody>
+</table></div>
+<p>梯度有两个几何含义，后面全靠它们：</p>
+<ul class="steps" style="counter-reset:none">
+  <li style="counter-increment:none"><div><b>方向</b>：指向 f <b>增长最快</b>的方向。f = x² + y² 像一个碗，梯度永远指向背离原点、往碗壁上爬的方向。</div></li>
+  <li style="counter-increment:none"><div><b>长度</b>：f 在这一点、沿最陡方向的<b>变化速率</b>。离原点越远碗越陡，梯度越长。下面细说。</div></li>
+</ul>
+<h3 style="font-family:var(--f-display);font-size:19px;margin:6px 0 0">"长度 = 变化速率"分两种情况</h3>
+<p>梯度的长度告诉你：沿梯度方向走距离 d，f 大约增加 <span class="m">‖∇f‖ × d</span>。这个"大约"在两种函数上表现很不一样。两张图都从一个点出发、沿梯度方向走，右边的小图把<span class="cg">实际增加量</span>和<span class="cf">按梯度长度预测的增加量</span>画在一起。</p>
+
+<div class="fig">
+  <div class="fig-cap">情况一 · 线性函数 f = 3x + 4y，从原点出发，∇f = <span class="vec"><span>3</span><span>4</span></span>，长度 5</div>
+  <div class="fig-row">
+    <svg class="plot" id="gA" viewBox="0 0 360 360" role="img" aria-label="线性函数的等高线与沿梯度走的点"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="dA">沿梯度走的距离 d <span id="dAv"></span></label><input type="range" id="dA" min="0" max="1.4" step="0.01" value="0.6"></div>
+      <div class="kv"><span>到达的点</span><span id="rAxy"></span></div>
+      <div class="kv"><span class="cg">实际增加</span><span id="rAact"></span></div>
+      <div class="kv"><span class="cf">按起点速率预测：5 × d</span><span id="rApred"></span></div>
+      <p class="note">5 = ‖∇f‖ = √(3² + 4²)，即起点处的梯度长度。实际增加 = 终点的 3x + 4y 减去起点的 0。</p>
+      <div class="kv"><span>差</span><span id="rAgap"></span></div>
+      <svg class="plot" id="cA" viewBox="0 0 260 150" role="img" aria-label="实际增加与预测增加随距离变化"></svg>
+    </div>
+  </div>
+</div>
+<p>线性函数像一个倾斜的平面，处处一样陡，所以等高线是<b>等间距的平行直线</b>，相邻两条相差 1，间距都是 1/5 = 0.2。不管走多远，实际增加都<b>正好</b>等于 5 × d，右边两条线完全重合。走 0.2 到达 f = 1 的等高线，走 1 到达 f = 5。</p>
+
+<div class="fig">
+  <div class="fig-cap">情况二 · 弯曲函数 f = x² + y²，从 (1, 1) 出发，∇f = <span class="vec"><span>2</span><span>2</span></span>，长度 2.83</div>
+  <div class="fig-row">
+    <svg class="plot" id="gB" viewBox="0 0 360 360" role="img" aria-label="碗形函数的等高线与沿梯度走的点"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="dB">沿梯度走的距离 d <span id="dBv"></span></label><input type="range" id="dB" min="0" max="1.4" step="0.01" value="0.6"></div>
+      <div class="kv"><span>到达的点</span><span id="rBxy"></span></div>
+      <div class="kv"><span class="cg">实际增加</span><span id="rBact"></span></div>
+      <div class="kv"><span class="cf">按起点速率预测：2.83 × d</span><span id="rBpred"></span></div>
+      <p class="note">2.83 = ‖∇f(1, 1)‖ = √(2² + 2²)，即起点处的梯度长度。实际增加 = 终点的 x² + y² 减去起点的 2。</p>
+      <div class="kv"><span>差</span><span id="rBgap"></span></div>
+      <svg class="plot" id="cB" viewBox="0 0 260 150" role="img" aria-label="实际增加与预测增加随距离变化"></svg>
+    </div>
+  </div>
+</div>
+<p>碗形函数越往外越陡，等高线圈一圈比一圈挤。把 d 拖到很小（比如 0.05），实际增加和预测几乎一样；走得越远，实际增加越超过预测，右边的曲线往上弯离了直线。这里的差正好是 <span class="m">d²</span>：实际增加 = 2.83d + d²。</p>
+<p class="callout">所以梯度的长度是 f <b>在这一点</b>、沿最陡方向的变化速率，和车速是一个概念：仪表盘显示 60 km/h，是说按现在的速度开 1 小时会走 60 公里，但下一秒速度就可能变。线性函数速度恒定，预测永远准；弯曲函数只在很小的一步内准。</p>
+<p class="callout">另外一个性质：梯度总是<b>垂直于等高线</b>。沿等高线走，f 不变；沿梯度走，f 涨得最快。这两个方向互相垂直。</p>
+
+<h2><span class="step">1</span>问题：带着条件找最小值</h2>
+<p>先看一个比 SVM 简单得多的问题：</p>
+<div class="eq">最小化 <i>f</i>(<i>x</i>, <i>y</i>) = <i>x</i>² + <i>y</i>²　　条件：<i>x</i> + <i>y</i> = 2</div>
+<p><span class="cf">f</span> 就是点到原点距离的平方。没有条件时，最小值显然在原点。但条件要求点必须待在直线 <span class="m">x + y = 2</span> 上，所以问题变成：<b>直线上哪个点离原点最近？</b></p>
+<p>图里的圆圈是 <span class="cf">f 的等高线</span>：同一个圆上的点 f 值相同，越往外 f 越大。紫色直线是<span class="cg">约束</span>。拖动滑块，让点沿着直线走，看 f 怎么变。</p>
+
+<div class="fig">
+  <div class="fig-cap">图 1 · 沿着约束线移动</div>
+  <div class="fig-row">
+    <svg class="plot" id="p1" viewBox="0 0 360 360" role="img" aria-label="等高线与约束直线"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="t1">点在直线上的位置 <span id="t1v"></span></label><input type="range" id="t1" min="-1.6" max="1.6" step="0.02" value="-1.1"></div>
+      <div class="kv"><span>点的坐标</span><span id="r1xy"></span></div>
+      <div class="kv"><span class="cf">f = x² + y²</span><span id="r1f"></span></div>
+      <div class="kv"><span>两个箭头的夹角</span><span id="r1ang"></span></div>
+      <div id="r1chip"></div>
+      <p class="note"><span class="cf">红箭头</span>是 f 的梯度 ∇f，指向 f 涨得最快的方向。<span class="cg">紫箭头</span>是约束的梯度 ∇g，垂直于直线。</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="step">2</span>关键观察：最优点处两个箭头平行</h2>
+<p>拖到 f 最小的地方（点 (1, 1)），会看到两件事同时发生：等高线圆刚好和直线<b>相切</b>，红箭头和紫箭头<b>指向同一个方向</b>。</p>
+<p class="callout">为什么必须平行？如果红箭头 ∇f 不垂直于直线，它就有一部分沿着直线方向。那你沿直线往反方向走一点点，f 就会变小，说明这里还不是最小值。只有当 ∇f 完全垂直于直线、也就是和 ∇g 平行时，沿直线往哪边走 f 都不会再变小。</p>
+<p>"平行"写成式子就是一个箭头是另一个的倍数：</p>
+<div class="eq"><span class="cf">∇<i>f</i></span> = <i>λ</i> · <span class="cg">∇<i>g</i></span></div>
+<p>这个倍数 <span class="m">λ</span>（读作 lambda）就是<b>拉格朗日乘子</b>。它只是一个数，告诉你"在最优点，目标的梯度是约束梯度的几倍"。</p>
+
+<h2><span class="step">3</span>λ 的含义和不等式约束</h2>
+<p>λ 不只是个辅助数字，它有一个具体含义：<b>约束收紧一点，最优值会变差多少</b>。在图 1 的最优点 (1, 1)，<span class="cf">∇f = <span class="vec"><span>2</span><span>2</span></span></span> 正好是 <span class="cg">∇g = <span class="vec"><span>1</span><span>1</span></span></span> 的 2 倍，所以 λ = 2。它的意思是：如果把条件从 x + y = 2 改成 x + y = 2.1，最小值大约增加 2 × 0.1 = 0.2。</p>
+<p>SVM 的约束是不等式（"分数至少为 1"），所以再看 <span class="m">x + y ≥ c</span>：点只要在直线上或直线右上方就行。这时会出现两种情况，拖动 c 看看：</p>
+
+<div class="fig">
+  <div class="fig-cap">图 2 · 不等式约束 x + y ≥ c</div>
+  <div class="fig-row">
+    <svg class="plot" id="p2" viewBox="0 0 360 360" role="img" aria-label="不等式约束下的最优点"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="c2">约束的位置 c <span id="c2v"></span></label><input type="range" id="c2" min="-2" max="3" step="0.05" value="2"></div>
+      <div id="r2chip"></div>
+      <div class="kv"><span>最优点</span><span id="r2xy"></span></div>
+      <div class="kv"><span>最小值 f*</span><span id="r2f"></span></div>
+      <div class="kv"><span>拉格朗日乘子 λ</span><span id="r2l"></span></div>
+      <p class="note" id="r2txt"></p>
+    </div>
+  </div>
+</div>
+
+<p>规律只有一条，记住它就够了：</p>
+<div class="map"><table>
+  <thead><tr><th>约束的状态</th><th>最优点在哪</th><th class="num">λ</th></tr></thead>
+  <tbody>
+    <tr><td>没碰到（原点本来就满足条件）</td><td>在可行区域内部，约束可有可无</td><td class="num">= 0</td></tr>
+    <tr><td>顶住了（原点不满足，只能停在边界上）</td><td>正好在直线上</td><td class="num">&gt; 0</td></tr>
+  </tbody>
+</table></div>
+<p>两种情况合起来写成 <span class="m">λ · (x + y − c) = 0</span>：要么 λ 是 0，要么点正好在边界上。这叫<b>互补松弛</b>，SVM 的支持向量就是从这句话里来的。</p>
+
+<h2><span class="step">4</span>回到 SVM</h2>
+<p>先回顾一下 SVM 要做什么（下面图 3 就是一个实例，可以对照着看）：</p>
+<ol class="steps">
+  <li><div><b>数据</b>：每个 trial 是平面上的一个点，横坐标是 PO7 的电压，纵坐标是 PO8 的电压。每个点知道自己是脸 A 还是脸 B。</div></li>
+  <li><div><b>打分</b>：给每个点算一个分数。写法和各符号见下面。</div></li>
+</ol>
+
+<div class="eq"><i>x</i> = <span class="vec"><span><i>x</i>₁</span><span><i>x</i>₂</span></span> = <span class="vec"><span>PO7 电压</span><span>PO8 电压</span></span>　　　<i>w</i> = <span class="vec"><span><i>w</i>₁</span><span><i>w</i>₂</span></span> = <span class="vec"><span>PO7 的权重</span><span>PO8 的权重</span></span></div>
+<div class="eq">分数 = <i>w</i><sup>T</sup><i>x</i> + <i>b</i> = <i>w</i>₁<i>x</i>₁ + <i>w</i>₂<i>x</i>₂ + <i>b</i></div>
+<p class="note">T 是转置：w<sup>T</sup> = (w₁　w₂) 是把竖着的 w 翻成一行。一行乘一列得到一个数，即 w₁x₁ + w₂x₂。</p>
+<div class="map"><table>
+  <thead><tr><th>符号</th><th>是什么</th><th class="num">图 3 里的值</th></tr></thead>
+  <tbody>
+    <tr><td><span class="m">x</span></td><td><b>电压向量</b>，一个 trial 的数据：x₁ 是它在 PO7 的电压，x₂ 是在 PO8 的电压。每个点有自己的 x。</td><td class="num">4 号点：<span class="vec"><span>−3.0</span><span>−1.9</span></span> μV</td></tr>
+    <tr><td><span class="m">w</span></td><td><b>权重向量</b>：w₁ 是 PO7 的权重，w₂ 是 PO8 的权重。所有点共用同一个 w，是 SVM 训练要找的。绝对值大，说明这个电极对分类影响大；正号表示这个电极电压越高，分数越偏向 B，负号则偏向 A。</td><td class="num"><span class="vec"><span>1.19</span><span>−0.92</span></span></td></tr>
+    <tr><td><span class="m">b</span></td><td><b>偏置</b>：一个常数，所有点共用，把分界线整体平移。也是训练要找的。</td><td class="num">0.84</td></tr>
+  </tbody>
+</table></div>
+<p>代入 4 号点：</p>
+<div class="eq">分数 = (1.19　−0.92) <span class="vec"><span>−3.0</span><span>−1.9</span></span> + 0.84 = −3.58 + 1.74 + 0.84 ≈ −1.00</div>
+<p>和图 3 表格里 4 号点的分数一致：正好是 −1，所以它贴在 A 侧的虚线上。权重的符号也和数据对得上：图 3 里 B 类的点 PO7 偏高、PO8 偏低，所以 w₁ 为正、w₂ 为负。</p>
+<p>分数 = 0 的点连起来是分界线（实线），分数 = +1 和 −1 的点连起来是两条虚线。正分判成 B，负分判成 A。特征有 60 个时，w 和 x 就各有 60 行，<span class="m">wᵀx = w₁x₁ + w₂x₂ + … + w₆₀x₆₀</span>，写法不变。</p>
+
+<ol class="steps" start="3" style="counter-reset:s 2">
+  <li><div><b>条件</b>：每个点都必须在自己那一侧的虚线外面。<b>每个数据点带一个条件</b>，14 个点就是 14 个条件：</div></li>
+</ol>
+<div class="eq">B 类的点：<i>w</i><sup>T</sup><i>x</i> + <i>b</i> ≥ +1　　　A 类的点：<i>w</i><sup>T</sup><i>x</i> + <i>b</i> ≤ −1</div>
+<ol class="steps" start="4" style="counter-reset:s 3">
+  <li><div><b>目标</b>：在满足所有条件的前提下，让 margin 最宽。</div></li>
+</ol>
+<div class="eq">margin = 2 / ‖<i>w</i>‖，　　‖<i>w</i>‖ = √(<i>w</i>₁² + <i>w</i>₂²)</div>
+<p><span class="m">‖w‖</span> 是 w 的长度，图 3 里 <span class="m">‖w‖ = √(1.19² + 0.92²) ≈ 1.51</span>。下面推导 margin 为什么是 2/‖w‖。</p>
+
+<div class="fig derive">
+  <div class="fig-cap">推导 · margin = 2 / ‖w‖</div>
+  <h4>设定</h4>
+  <ul style="margin:0;padding-left:1.2em">
+    <li>分界线（实线）：分数为 0 的点，即 <span class="m">wᵀx + b = 0</span></li>
+    <li>虚线：分数为 1 的点，即 <span class="m">wᵀx + b = 1</span>（另一条是 −1）</li>
+    <li>margin = 两条虚线之间的垂直距离 = 2 ×（虚线到实线的垂直距离）</li>
+  </ul>
+  <p>所以只要算出<b>虚线到实线的垂直距离 d</b>。</p>
+
+  <h4>第 1 步：垂直于分界线的方向</h4>
+  <p>打分函数对 x₁ 求偏导得 w₁，对 x₂ 求偏导得 w₂，所以它的梯度就是 w。梯度垂直于等高线（第 0 节），分界线是"分数 = 0"的等高线，所以 <b>w 垂直于分界线</b>。把它缩成长度为 1 的方向向量：</p>
+  <div class="eq"><i>u</i> = <span class="frac"><span><i>w</i></span><span>‖<i>w</i>‖</span></span></div>
+  <p>u 是"垂直于分界线、长度为 1"的方向。</p>
+
+  <h4>第 2 步：从虚线上一点出发，沿 −u 走 d</h4>
+  <p>取虚线上任意一点 x₀，它满足 <span class="m">wᵀx₀ + b = 1</span>。沿 −u 方向（朝分界线）走距离 d，到达</p>
+  <div class="eq"><i>x</i>₀ − <i>d</i>·<i>u</i></div>
+
+  <h4>第 3 步：算新点的分数</h4>
+  <div class="eq"><i>w</i><sup>T</sup>(<i>x</i>₀ − <i>d</i>·<i>u</i>) + <i>b</i> = <span class="brace"><span>(<i>w</i><sup>T</sup><i>x</i>₀ + <i>b</i>)</span><small>= 1，因为 x₀ 在虚线上</small></span> − <i>d</i> · <span class="frac"><span><i>w</i><sup>T</sup><i>w</i></span><span>‖<i>w</i>‖</span></span></div>
+  <p>而 <span class="m">wᵀw = w₁² + w₂² = ‖w‖²</span>，所以</p>
+  <div class="eq">新点的分数 = 1 − <i>d</i> · <span class="frac"><span>‖<i>w</i>‖²</span><span>‖<i>w</i>‖</span></span> = 1 − <i>d</i>‖<i>w</i>‖</div>
+  <p>意思是：分数从 1 开始，每走 1 单位就减少 ‖w‖。</p>
+
+  <h4>第 4 步：要求到达分界线</h4>
+  <p>我们想知道走多远才到分界线。<b>分界线就是分数等于 0 的地方</b>，所以把第 3 步算出的"新点的分数"令为 0。下面用图 3 的真实结果（‖w‖ ≈ 1.51）走一遍：从 13 号点（它正好在 +1 那条虚线上）出发，沿 −u 朝分界线走。拖动 d，看分数怎么降到 0。</p>
+  <div class="fig-row">
+    <svg class="plot" id="pw" viewBox="0 0 360 360" role="img" aria-label="从虚线沿垂直方向走向分界线"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="dw">走了多远 d <span id="dwv"></span></label><input type="range" id="dw" min="0" max="1.33" step="0.005" value="0.3"></div>
+      <div class="kv"><span>新点的坐标</span><span id="rwxy"></span></div>
+      <div class="kv"><span>代入打分函数得到的分数</span><span id="rwsc"></span></div>
+      <div class="kv"><span>公式 1 − 1.51d</span><span id="rwfm"></span></div>
+      <div id="rwchip"></div>
+      <svg class="plot" id="cw" viewBox="0 0 260 170" role="img" aria-label="分数随走的距离变化"></svg>
+    </div>
+  </div>
+  <p class="note">两行分数始终相等：一个是把新点的坐标真的代入 wᵀx + b 算出来的，一个是第 3 步的公式。分数每走 1 单位减少 1.51，所以右边是一条斜率为 −1.51 的直线，它穿过 0 的地方就是 d = 0.66。继续走到 d = 1.33，分数变成 −1，到了另一条虚线，这整段就是 margin。</p>
+  <p>令分数 = 0，解关于 d 的一元一次方程：</p>
+  <div class="eq">1 − <i>d</i>‖<i>w</i>‖ = 0　⇒　1 = <i>d</i>‖<i>w</i>‖　⇒　<i>d</i> = <span class="frac"><span>1</span><span>‖<i>w</i>‖</span></span></div>
+  <p>代入数字：d = 1/1.51 ≈ 0.66，和表里分数变成 0 的位置一致。两边各一条虚线，所以</p>
+  <div class="eq">margin = 2<i>d</i> = <span class="frac"><span>2</span><span>‖<i>w</i>‖</span></span></div>
+</div>
+
+<p>‖w‖ 越小，margin 越宽，所以目标是：</p>
+<div class="eq">在上面 14 个条件下，找使 ‖<i>w</i>‖ 最小的 <i>w</i> 和 <i>b</i></div>
+<p>所以 SVM 和前面的小问题是同一种事：带着不等式条件找最小值。区别只是条件从 1 个变成了"每个数据点 1 个"。一一对上：</p>
+<div class="map"><table>
+  <thead><tr><th>小问题</th><th>SVM</th></tr></thead>
+  <tbody>
+    <tr><td>要最小化的东西：点到原点的距离</td><td>要最小化的东西：w 的长度（等于让 margin 最宽）</td></tr>
+    <tr><td>1 个条件：点要在紫色直线的右上方</td><td>14 个条件：每个数据点都要在虚线外面</td></tr>
+    <tr><td>1 个拉格朗日乘子 λ</td><td>14 个乘子，每个点一个。SVM 里习惯叫它 α（alpha）</td></tr>
+    <tr><td>条件没碰到 → λ = 0</td><td>这个点离分界线很远，没贴到虚线 → 它的 α = 0，对结果毫无影响</td></tr>
+    <tr><td>条件顶住了 → λ &gt; 0</td><td>这个点正好贴在虚线上（分数正好是 +1 或 −1）→ 它的 α &gt; 0，这就是<b>支持向量</b></td></tr>
+  </tbody>
+</table></div>
+<h3 style="font-family:var(--f-display);font-size:19px;margin:6px 0 0">为什么 w 由支持向量拼出来</h3>
+<p>训练 SVM 时，14 个点的坐标都是已知的数据，要找的是 w₁、w₂、b。所以这里换一个视角：<b>w₁、w₂、b 是变量，点的坐标是常数</b>。第 i 个点的坐标记作 <span class="m">xᵢ</span> = <span class="vec"><span>xᵢ₁</span><span>xᵢ₂</span></span>（xᵢ₁ 是它在 PO7 的电压，xᵢ₂ 是在 PO8 的电压），它的拉格朗日乘子记作 <span class="m">αᵢ</span>。</p>
+<p><b>等价目标函数。</b>目标是让 ‖w‖ = √(w₁² + w₂²) 最小，但根号不好求导。长度不会是负数，让 ‖w‖ 最小和让 ‖w‖² 最小找到的是同一个 w，所以改为最小化</p>
+<div class="eq"><i>F</i> = ½‖<i>w</i>‖² = ½(<i>w</i>₁² + <i>w</i>₂²)</div>
+<p>这里把 F 叫做<b>等价目标函数</b>：它和"让 margin 最宽"结果完全一样，只是更好求导。前面的 ½ 是为了求导时把 2 消掉。它和第 1 节的 x² + y² 是同一个形状：把每组权重 (w₁, w₂) 看成"权重平面"上的一个点，F 就是它到原点距离平方的一半。所以 SVM 问的是：在 14 个条件都满足的前提下，找离原点最近的 w。</p>
+<p>要用的是第 2 节的"梯度平行"。先写出三类函数，都对 w₁、w₂ 求偏导，竖着排起来就是关于 w 的梯度：</p>
+<div class="map"><table>
+  <thead><tr><th>函数</th><th>写出来</th><th>关于 w 的梯度</th><th>例子</th></tr></thead>
+  <tbody>
+    <tr><td>等价目标函数</td><td><span class="m">F = ½(w₁² + w₂²)</span></td><td><span class="vec"><span>w₁</span><span>w₂</span></span> = w</td><td>和第 0 节的 x² + y² 一样，只是变量换成了 w₁、w₂</td></tr>
+    <tr><td>B 类点 i 的条件<br><span class="note">要求 Gᵢ ≥ 1</span></td><td><span class="m">Gᵢ = xᵢ₁w₁ + xᵢ₂w₂ + b</span></td><td><span class="vec"><span>xᵢ₁</span><span>xᵢ₂</span></span> = xᵢ</td><td>13 号点：G = −2.4w₁ − 3.3w₂ + b，梯度 <span class="vec"><span>−2.4</span><span>−3.3</span></span></td></tr>
+    <tr><td>A 类点 i 的条件<br><span class="note">分数 ≤ −1，两边乘 −1 改写成 Gᵢ ≥ 1</span></td><td><span class="m">Gᵢ = −(xᵢ₁w₁ + xᵢ₂w₂ + b)</span></td><td><span class="vec"><span>−xᵢ₁</span><span>−xᵢ₂</span></span> = −xᵢ</td><td>4 号点：G = 3.0w₁ + 1.9w₂ − b，梯度 <span class="vec"><span>3.0</span><span>1.9</span></span></td></tr>
+  </tbody>
+</table></div>
+<p class="note">目标 F 是什么：让 margin = 2/‖w‖ 最宽，就是让 ‖w‖ = √(w₁² + w₂²) 最小。根号不好求导，而最小化 ‖w‖ 和最小化 ‖w‖² 得到的是同一个 w，所以改用平方；前面的 ½ 只是为了求导时消掉 2。它和第 1 节的 x² + y² 是同一个形状：在 (w₁, w₂) 平面上，F 是到原点距离平方的一半。所以 SVM 就是在满足 14 个条件的前提下，找离原点最近的 w。</p>
+<p>在分数 xᵢ₁w₁ + xᵢ₂w₂ + b 里，点的坐标是 w₁、w₂ 的系数，所以对 w 求偏导留下来的就是坐标。A 类多一个负号，是因为把"≤ −1"翻成了"≥ 1"。</p>
+<p>第 2 节只有一个条件，最优点满足 <span class="m">∇f = λ∇g</span>。有多个条件时，变成<b>目标的梯度 = 各个条件的梯度乘上各自的乘子，再加起来</b>：</p>
+<div class="eq">∇<i>F</i> = Σ<sub>i</sub> <i>α</i><sub>i</sub> ∇<i>G</i><sub>i</sub></div>
+<p>直观理解：最优点同时顶着好几条边界，目标的梯度必须能由这些边界的方向组合出来；否则还能贴着边界往某个方向挪一点，让目标继续变小。把表里的三个梯度代进去：</p>
+<div class="eq"><i>w</i> = Σ<sub>B 类</sub> <i>α</i><sub>i</sub> <i>x</i><sub>i</sub> − Σ<sub>A 类</sub> <i>α</i><sub>i</sub> <i>x</i><sub>i</sub></div>
+<p>再用第 3 节的结论：没顶住虚线的点 αᵢ = 0，它那一项是零向量，加了等于没加。<b>真正留下来的只有支持向量</b>，这就是"分界线只由支持向量决定"的数学含义。</p>
+
+<div class="fig">
+  <div class="fig-cap">图 · 用图 3 的三个支持向量拼出 w</div>
+  <div class="fig-row">
+    <svg class="plot" id="pv" viewBox="0 0 360 360" role="img" aria-label="三个支持向量的贡献首尾相接拼成 w"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="sv">加进来的项数 <span id="svv"></span></label><input type="range" id="sv" min="0" max="3" step="1" value="3"></div>
+      <div id="rvterms" class="readout" style="gap:6px"></div>
+      <div class="kv"><span><b>目前加起来</b></span><span id="rvsum"></span></div>
+      <div id="rvchip"></div>
+      <p class="note">其余 11 个点 α = 0，每一项都是零向量，画出来只是一个点，不改变结果。</p>
+    </div>
+  </div>
+</div>
+<p>每一项都是"α × 坐标"，B 类取正号、A 类取负号。三项首尾相接，终点正好是 sklearn 算出的 w。</p>
+
+<p><b>顺带对 b 求偏导。</b>目标 F 里没有 b，所以对 b 的偏导是 0；B 类的 Gᵢ 对 b 的偏导是 +1，A 类是 −1。按同样的"梯度平行"：</p>
+<div class="eq">0 = Σ<sub>B 类</sub> <i>α</i><sub>i</sub> − Σ<sub>A 类</sub> <i>α</i><sub>i</sub></div>
+<p>也就是 <b>A 类的 α 加起来等于 B 类的 α 加起来</b>。图 3 里：0.618 + 0.514 = 1.132，正好等于 13 号点的 α。第 5 节说 SMO 每次必须同时调两个 α，就是因为这个条件。</p>
+<p class="callout">顺便回答一个前面埋下的问题：为什么 w 垂直于分界线？把打分规则对 PO7 求偏导，得到的就是 PO7 的权重；对 PO8 求偏导，得到 PO8 的权重。所以打分规则的梯度就是 w 本身。分界线是"分数 = 0"的等高线，而梯度总是垂直于等高线（第 0 节），所以 w 垂直于分界线。打分规则又是线性的（第 0 节的情况一），所以沿 w 方向走，分数的增长速率恒定为 w 的长度。</p>
+<p>下面是用 sklearn 在 14 个点上真实算出来的结果，点一下图里的点或表格的行可以对照。</p>
+
+<div class="fig">
+  <div class="fig-cap">图 3 · 硬间隔线性 SVM，sklearn SVC 计算结果</div>
+  <svg class="plot" id="p3" viewBox="0 0 560 400" role="img" aria-label="SVM 散点、分界线与各点的 alpha"></svg>
+  <p class="note"><span class="ca">● 脸 A</span>　<span class="cb">■ 脸 B</span>　<span class="cg">◯ 支持向量，圈越大 α 越大</span>　实线是分界线，虚线是分数 ±1</p>
+  <div class="map"><table id="t3">
+    <thead><tr><th>点</th><th>类别</th><th class="num">坐标 (PO7, PO8)</th><th class="num">分数 wᵀx+b</th><th class="num">α</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <p class="note" id="wcalc"></p>
+</div>
+
+<h2><span class="step">5</span>剩下的一步：对偶问题和 SMO</h2>
+<p>既然 w 可以用 α 拼出来，那就不用直接去找 w 了，改成去找那 14 个 α。换成"找 α"之后的问题叫<b>对偶问题</b>，它和原问题答案完全一样，只是换了一组未知数。昨天说的 SMO 算法解的就是这个问题。</p>
+<p>对偶问题里有一个条件：<b>A 类所有点的 α 加起来，必须等于 B 类所有点的 α 加起来</b>。图 3 里可以验证：A 类是 0.618 + 0.514 = 1.132，B 类是 1.132，正好相等。如果只改一个 α，两边就不相等了，所以 SMO 每次至少要同时调两个 α，一个变了另一个跟着补上。这就是它"每次挑两个"的原因。</p>
+<p>软间隔版本（有参数 C 的那种）只多了一个条件：每个 α 都不能超过 C。也就是每个点的影响力有上限，越界的点不能无限拉扯分界线。</p>
+
+<h2><span class="step">✓</span>一句话串起来</h2>
+<p class="callout">拉格朗日乘子是"带条件求最小值"的方法：最优点处，目标的梯度和约束的梯度平行，倍数就是乘子。不等式约束里，没顶住边界的约束乘子为 0。SVM 给每个数据点一个约束，顶住虚线的点乘子大于 0，它们就是支持向量，分界线只由它们决定。</p>
+</main>
+
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function mkScale(x0,x1,y0,y1,W,H,pad){
+  const sx=(W-2*pad)/(x1-x0), sy=(H-2*pad)/(y1-y0);
+  return {X:x=>pad+(x-x0)*sx, Y:y=>H-pad-(y-y0)*sy, sx, sy};
+}
+function axes(svg,s,x0,x1,y0,y1,step){
+  const g=el("g",{},svg);
+  for(let v=Math.ceil(x0/step)*step;v<=x1+1e-9;v+=step)el("line",{x1:s.X(v),x2:s.X(v),y1:s.Y(y0),y2:s.Y(y1),stroke:"var(--grid)","stroke-width":1},g);
+  for(let v=Math.ceil(y0/step)*step;v<=y1+1e-9;v+=step)el("line",{x1:s.X(x0),x2:s.X(x1),y1:s.Y(v),y2:s.Y(v),stroke:"var(--grid)","stroke-width":1},g);
+  if(x0<0&&x1>0)el("line",{x1:s.X(0),x2:s.X(0),y1:s.Y(y0),y2:s.Y(y1),stroke:"var(--line)","stroke-width":1.2},g);
+  if(y0<0&&y1>0)el("line",{x1:s.X(x0),x2:s.X(x1),y1:s.Y(0),y2:s.Y(0),stroke:"var(--line)","stroke-width":1.2},g);
+  return g;
+}
+function arrow(g,x1,y1,x2,y2,color,w){
+  el("line",{x1,y1,x2,y2,stroke:color,"stroke-width":w||2.5,"stroke-linecap":"round"},g);
+  const a=Math.atan2(y2-y1,x2-x1),h=9;
+  el("path",{d:`M${x2},${y2} L${x2-h*Math.cos(a-0.45)},${y2-h*Math.sin(a-0.45)} L${x2-h*Math.cos(a+0.45)},${y2-h*Math.sin(a+0.45)} Z`,fill:color},g);
+}
+const f2=n=>(Math.abs(n)<0.005?0:n).toFixed(2);
+
+/* ---------- Figure 1 ---------- */
+(()=>{
+  const svg=$("p1"),W=360,H=360,x0=-1,x1=3.2,y0=-1,y1=3.2;
+  const s=mkScale(x0,x1,y0,y1,W,H,18);
+  axes(svg,s,x0,x1,y0,y1,1);
+  const cg=el("g",{},svg);
+  [0.5,1,1.5,2,2.5,3,3.5].forEach(r=>el("circle",{cx:s.X(0),cy:s.Y(0),r:r*s.sx,fill:"none",stroke:"var(--f)","stroke-opacity":.28,"stroke-width":1},cg));
+  el("text",{x:s.X(0)+5,y:s.Y(0)+14},svg).textContent="原点";
+  el("line",{x1:s.X(-1),y1:s.Y(3),x2:s.X(3.2),y2:s.Y(-1.2),stroke:"var(--g)","stroke-width":2.5},svg);
+  el("text",{x:s.X(2.35),y:s.Y(-0.62),fill:"var(--g)"},svg).textContent="x + y = 2";
+  const cur=el("circle",{fill:"none",stroke:"var(--f)","stroke-width":2},svg);
+  const ag=el("g",{},svg);
+  const dot=el("circle",{r:6,fill:"var(--ink)"},svg);
+  const t=$("t1");
+  function draw(){
+    const tv=+t.value,x=1+tv,y=1-tv,f=x*x+y*y;
+    $("t1v").textContent=tv.toFixed(2);
+    cur.setAttribute("cx",s.X(0));cur.setAttribute("cy",s.Y(0));cur.setAttribute("r",Math.sqrt(f)*s.sx);
+    dot.setAttribute("cx",s.X(x));dot.setAttribute("cy",s.Y(y));
+    ag.innerHTML="";
+    const gf=[2*x,2*y],L=Math.hypot(...gf),k=0.75/L;
+    arrow(ag,s.X(x),s.Y(y),s.X(x+gf[0]*k),s.Y(y+gf[1]*k),"var(--f)");
+    const kg=0.6/Math.SQRT2;
+    arrow(ag,s.X(x),s.Y(y),s.X(x+kg),s.Y(y+kg),"var(--g)");
+    const ang=Math.acos(Math.min(1,(gf[0]+gf[1])/(L*Math.SQRT2)))*180/Math.PI;
+    $("r1xy").textContent=`(${f2(x)}, ${f2(y)})`;
+    $("r1f").textContent=f.toFixed(2);
+    $("r1ang").textContent=ang.toFixed(0)+"°";
+    const best=Math.abs(tv)<0.03;
+    $("r1chip").innerHTML=best
+      ?`<span class="chip" style="color:var(--ok)">最小值：两个箭头平行，圆与直线相切</span>`
+      :`<span class="chip" style="color:var(--muted)">还不是最小：往 ${tv>0?"左":"右"} 移，f 会变小</span>`;
+  }
+  t.addEventListener("input",draw);draw();
+})();
+
+/* ---------- Figure 2 ---------- */
+(()=>{
+  const svg=$("p2"),W=360,H=360,x0=-2.5,x1=3,y0=-2.5,y1=3;
+  const s=mkScale(x0,x1,y0,y1,W,H,18);
+  const shade=el("polygon",{fill:"var(--g)","fill-opacity":.1},svg);
+  axes(svg,s,x0,x1,y0,y1,1);
+  const cg=el("g",{},svg);
+  [0.5,1,1.5,2,2.5,3].forEach(r=>el("circle",{cx:s.X(0),cy:s.Y(0),r:r*s.sx,fill:"none",stroke:"var(--f)","stroke-opacity":.25,"stroke-width":1},cg));
+  const line=el("line",{stroke:"var(--g)","stroke-width":2.5},svg);
+  const lab=el("text",{fill:"var(--g)"},svg);
+  const cur=el("circle",{fill:"none",stroke:"var(--f)","stroke-width":2},svg);
+  const dot=el("circle",{r:6.5,fill:"var(--ink)"},svg);
+  const c=$("c2");
+  function draw(){
+    const cv=+c.value;
+    $("c2v").textContent=cv.toFixed(2);
+    // feasible half-plane x+y>=c clipped to box
+    const pts=[[x0,cv-x0],[cv-y0,y0],[x1,y0],[x1,y1],[x0,y1]];
+    const poly=[];
+    const corners=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+    for(let i=0;i<4;i++){
+      const a=corners[i],b=corners[(i+1)%4];
+      const ia=a[0]+a[1]>=cv,ib=b[0]+b[1]>=cv;
+      if(ia)poly.push(a);
+      if(ia!==ib){const t=(cv-a[0]-a[1])/((b[0]+b[1])-(a[0]+a[1]));poly.push([a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])]);}
+    }
+    shade.setAttribute("points",poly.map(p=>s.X(p[0])+","+s.Y(p[1])).join(" "));
+    line.setAttribute("x1",s.X(x0));line.setAttribute("y1",s.Y(cv-x0));
+    line.setAttribute("x2",s.X(x1));line.setAttribute("y2",s.Y(cv-x1));
+    lab.setAttribute("x",s.X(Math.min(2.2,cv+2.4)));lab.setAttribute("y",s.Y(cv-Math.min(2.2,cv+2.4))-6);
+    lab.textContent="x + y = "+cv.toFixed(2);
+    const active=cv>0;
+    const ox=active?cv/2:0,oy=active?cv/2:0,fs=ox*ox+oy*oy,lam=active?cv:0;
+    cur.setAttribute("cx",s.X(0));cur.setAttribute("cy",s.Y(0));cur.setAttribute("r",Math.max(0.001,Math.sqrt(fs))*s.sx);
+    dot.setAttribute("cx",s.X(ox));dot.setAttribute("cy",s.Y(oy));
+    $("r2xy").textContent=`(${f2(ox)}, ${f2(oy)})`;
+    $("r2f").textContent=fs.toFixed(2);
+    $("r2l").textContent=lam.toFixed(2);
+    $("r2chip").innerHTML=active
+      ?`<span class="chip" style="color:var(--g)">约束顶住了 · λ &gt; 0</span>`
+      :`<span class="chip" style="color:var(--muted)">约束没碰到 · λ = 0</span>`;
+    $("r2txt").textContent=active
+      ?`原点不在阴影区里，最优点被挤到边界上。λ = ${lam.toFixed(2)}：把 c 再加 0.1，f* 大约增加 ${(lam*0.1).toFixed(2)}。`
+      :"原点本来就在阴影区（满足条件）里，最优点就是原点。约束有没有都一样，所以 λ = 0。";
+  }
+  c.addEventListener("input",draw);draw();
+})();
+
+/* ---------- Figure 3 ---------- */
+(()=>{
+  const D={"X":[[-4.2,-1.6],[-3.6,-0.8],[-4.8,-2.6],[-3.0,-1.9],[-5.2,-1.2],[-2.6,-0.6],[-4.0,-3.2],[-1.4,-3.6],[-0.8,-2.6],[-2.0,-4.4],[-0.4,-3.9],[-1.6,-5.2],[-2.4,-3.3],[-0.9,-4.8]],
+    "y":[-1,-1,-1,-1,-1,-1,-1,1,1,1,1,1,1,1],
+    "alpha":[0,0,0,0.6181,0,0,0.5137,0,0,0,0,0,1.1318,0],
+    "w":[1.1927,-0.9167],"b":0.837};
+  const svg=$("p3"),W=560,H=400,x0=-6,x1=0.4,y0=-6,y1=0.2;
+  const pad=28;
+  const sx=(W-2*pad)/(x1-x0),sy=(H-2*pad)/(y1-y0),sc=Math.min(sx,sy);
+  const ox=(W-sc*(x1-x0))/2,oy=(H-sc*(y1-y0))/2;
+  const X=x=>ox+(x-x0)*sc,Y=y=>H-oy-(y-y0)*sc;
+  const s={X,Y};
+  axes(svg,s,x0,x1,y0,y1,1);
+  for(let v=-6;v<=0;v+=2){el("text",{x:X(v),y:Y(y0)+16,"text-anchor":"middle"},svg).textContent=v;el("text",{x:X(x0)-6,y:Y(v)+4,"text-anchor":"end"},svg).textContent=v;}
+  el("text",{x:X(x1)-2,y:Y(y0)-6,"text-anchor":"end"},svg).textContent="PO7";
+  el("text",{x:X(x0)+4,y:Y(y1)+12},svg).textContent="PO8";
+  const [w1,w2]=D.w,b=D.b;
+  const yAt=(x,k)=>(k-b-w1*x)/w2;
+  // margin band
+  const band=[[x0,yAt(x0,1)],[x1,yAt(x1,1)],[x1,yAt(x1,-1)],[x0,yAt(x0,-1)]];
+  el("clipPath",{id:"clip3"},svg).appendChild(el("rect",{x:X(x0),y:Y(y1),width:X(x1)-X(x0),height:Y(y0)-Y(y1)}));
+  const cg=el("g",{"clip-path":"url(#clip3)"},svg);
+  el("polygon",{points:band.map(p=>X(p[0])+","+Y(p[1])).join(" "),fill:"var(--g)","fill-opacity":.08},cg);
+  [1,-1].forEach(k=>el("line",{x1:X(x0),y1:Y(yAt(x0,k)),x2:X(x1),y2:Y(yAt(x1,k)),stroke:"var(--muted)","stroke-dasharray":"6 5","stroke-width":1.3},cg));
+  el("line",{x1:X(x0),y1:Y(yAt(x0,0)),x2:X(x1),y2:Y(yAt(x1,0)),stroke:"var(--ink)","stroke-width":2.2},cg);
+  const pg=el("g",{class:"pts"},svg);
+  const shapes=[];
+  D.X.forEach((p,i)=>{
+    const a=D.alpha[i],col=D.y[i]<0?"var(--cA)":"var(--cB)";
+    if(a>0)el("circle",{cx:X(p[0]),cy:Y(p[1]),r:9+a*9,fill:"none",stroke:"var(--g)","stroke-width":2},pg);
+    let sh;
+    if(D.y[i]<0)sh=el("circle",{cx:X(p[0]),cy:Y(p[1]),r:6.5,fill:col},pg);
+    else sh=el("rect",{x:X(p[0])-6,y:Y(p[1])-6,width:12,height:12,fill:col},pg);
+    sh.setAttribute("tabindex","0");sh.setAttribute("aria-label","点 "+(i+1));
+    const t=el("text",{x:X(p[0])+(a>0?(14+a*9):10),y:Y(p[1])+4,style:"fill:var(--ink)"},pg);t.textContent=i+1;
+    sh.addEventListener("click",()=>hl(i));sh.addEventListener("focus",()=>hl(i));
+    shapes.push(sh);
+  });
+
+  const tb=document.querySelector("#t3 tbody");
+  const rows=D.X.map((p,i)=>{
+    const sc=w1*p[0]+w2*p[1]+b,a=D.alpha[i];
+    const tr=document.createElement("tr");
+    if(a>0)tr.className="sv";
+    tr.innerHTML=`<td>${i+1}</td><td><span class="${D.y[i]<0?"ca":"cb"}">${D.y[i]<0?"A":"B"}</span></td><td class="num">(${p[0].toFixed(1)}, ${p[1].toFixed(1)})</td><td class="num">${sc>=0?"+":""}${sc.toFixed(2)}</td><td class="num">${a>0?a.toFixed(3):"0"}</td>`;
+    tr.style.cursor="pointer";tr.addEventListener("click",()=>hl(i));
+    tb.appendChild(tr);return tr;
+  });
+  function hl(i){rows.forEach((r,j)=>r.classList.toggle("hl",j===i));shapes.forEach((s,j)=>s.setAttribute("stroke",j===i?"var(--ink)":"none"));shapes.forEach((s,j)=>s.setAttribute("stroke-width",j===i?2.5:0));}
+  const sv=D.alpha.map((a,i)=>[a,i]).filter(v=>v[0]>0);
+  const V=(a,b)=>`<span class="vec"><span>${a}</span><span>${b}</span></span>`;
+  const parts=sv.map(([a,i])=>`${a.toFixed(3)} × (${D.y[i]>0?"+1":"−1"}) × ${V(D.X[i][0],D.X[i][1])}`).join(" + ");
+  $("wcalc").innerHTML=`14 个点里只有 3 个 α 不为 0（第 ${sv.map(v=>v[1]+1).join("、")} 号），它们的分数正好是 ±1，都贴在虚线上。其余 11 个点分数的绝对值都大于 1，α = 0。<br>验证"w 由支持向量拼出来"：每个支持向量的坐标 × 它的 α，A 类取负号、B 类取正号：${parts} = ${V(w1.toFixed(2),w2.toFixed(2))}，和 sklearn 给出的 w 一致。margin = 2/‖w‖ = ${(2/Math.hypot(w1,w2)).toFixed(2)} μV。`;
+})();
+})();
+</script>
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function arrow(g,x1,y1,x2,y2,c,w,dash){el("line",{x1,y1,x2,y2,stroke:c,"stroke-width":w||2.6,"stroke-linecap":"round","stroke-dasharray":dash||""},g);const a=Math.atan2(y2-y1,x2-x1),h=10;el("path",{d:`M${x2},${y2} L${x2-h*Math.cos(a-0.42)},${y2-h*Math.sin(a-0.42)} L${x2-h*Math.cos(a+0.42)},${y2-h*Math.sin(a+0.42)} Z`,fill:c},g);}
+const V=(a,b)=>`<span class="vec"><span>${a}</span><span>${b}</span></span>`;
+const f2=v=>(v>=0?"":"−")+Math.abs(v).toFixed(2);
+const T=[{n:13,a:1.1318,s:1,x:[-2.4,-3.3],c:"var(--cB)",cls:"cb"},{n:4,a:0.6181,s:-1,x:[-3.0,-1.9],c:"var(--cA)",cls:"ca"},{n:7,a:0.5137,s:-1,x:[-4.0,-3.2],c:"var(--cA)",cls:"ca"}];
+T.forEach(t=>{t.v=[t.s*t.a*t.x[0],t.s*t.a*t.x[1]];});
+const svg=$("pv"),W=360,H=360,pad=20,X0=-3.4,X1=2.3,Y0=-4.4,Y1=1.3,s=(W-2*pad)/(X1-X0);
+const X=x=>pad+(x-X0)*s,Y=y=>H-pad-(y-Y0)*s;
+for(let v=-3;v<=2;v++)el("line",{x1:X(v),x2:X(v),y1:Y(Y0),y2:Y(Y1),stroke:"var(--grid)"},svg);
+for(let v=-4;v<=1;v++)el("line",{x1:X(X0),x2:X(X1),y1:Y(v),y2:Y(v),stroke:"var(--grid)"},svg);
+el("line",{x1:X(0),x2:X(0),y1:Y(Y0),y2:Y(Y1),stroke:"var(--line)","stroke-width":1.3},svg);
+el("line",{x1:X(X0),x2:X(X1),y1:Y(0),y2:Y(0),stroke:"var(--line)","stroke-width":1.3},svg);
+[-3,-2,-1,1,2].forEach(v=>el("text",{x:X(v),y:Y(0)+14,"text-anchor":"middle"},svg).textContent=v);
+[-4,-3,-2,-1,1].forEach(v=>el("text",{x:X(0)-6,y:Y(v)+4,"text-anchor":"end"},svg).textContent=v);
+el("circle",{cx:X(0),cy:Y(0),r:3.5,fill:"var(--ink)"},svg);
+el("text",{x:X(0)+6,y:Y(0)-6},svg).textContent="原点";
+const g=el("g",{},svg);
+const sl=$("sv");
+function draw(){
+  const k=+sl.value;g.innerHTML="";
+  let p=[0,0];
+  T.forEach((t,i)=>{
+    const q=[p[0]+t.v[0],p[1]+t.v[1]];
+    if(i<k){arrow(g,X(p[0]),Y(p[1]),X(q[0]),Y(q[1]),t.c);
+      const mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2;
+      const lab=el("text",{x:X(mx)+(i===0?-8:8),y:Y(my)+(i===0?0:-6),"text-anchor":i===0?"end":"start",style:`fill:${t.c}`},g);
+      lab.textContent=`${t.s>0?"+":"−"}${t.a.toFixed(3)} × x${t.n===13?"₁₃":t.n===4?"₄":"₇"}`;}
+    else el("line",{x1:X(p[0]),y1:Y(p[1]),x2:X(q[0]),y2:Y(q[1]),stroke:"var(--line)","stroke-dasharray":"3 4"},g);
+    p=q;
+  });
+  let sum=[0,0];T.slice(0,k).forEach(t=>{sum[0]+=t.v[0];sum[1]+=t.v[1];});
+  if(k>0&&k<3)arrow(g,X(0),Y(0),X(sum[0]),Y(sum[1]),"var(--muted)",1.6,"5 4");
+  if(k===3){arrow(g,X(0),Y(0),X(sum[0]),Y(sum[1]),"var(--g)",3.4);el("text",{x:X(sum[0])+8,y:Y(sum[1])+14,style:"fill:var(--g);font-size:13px;font-weight:600"},g).textContent="w";}
+  $("svv").textContent=k+" / 3";
+  $("rvterms").innerHTML=T.map((t,i)=>`<div class="kv" style="opacity:${i<k?1:.35};flex-direction:column;align-items:flex-start;gap:2px"><span class="${t.cls}">${t.n} 号点（${t.s>0?"B 类，取 +":"A 类，取 −"}）</span><span style="white-space:nowrap">${t.s>0?"+":"−"}${t.a.toFixed(3)} × ${V(t.x[0].toFixed(1),t.x[1].toFixed(1))} = ${V(f2(t.v[0]),f2(t.v[1]))}</span></div>`).join("");
+  $("rvsum").innerHTML=V(f2(sum[0]),f2(sum[1]));
+  $("rvchip").innerHTML=k===3?`<span class="chip" style="color:var(--ok)">和 sklearn 给出的 w = ${V("1.19","−0.92")} 一致</span>`:`<span class="chip" style="color:var(--muted)">还差 ${3-k} 项</span>`;
+}
+sl.addEventListener("input",draw);draw();
+})();
+</script>
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+const w1=1.1927,w2=-0.9167,b=0.837,nw=Math.hypot(w1,w2),u=[w1/nw,w2/nw],x0=[-2.4,-3.3];
+const score=(x,y)=>w1*x+w2*y+b;
+const svg=$("pw"),W=360,H=360,pad=18,X0=-4.4,X1=-1.4,Y0=-4.4,Y1=-1.4,s=(W-2*pad)/(X1-X0);
+const X=x=>pad+(x-X0)*s,Y=y=>H-pad-(y-Y0)*s;
+for(let v=-4;v<=-1.5;v+=0.5){el("line",{x1:X(v),x2:X(v),y1:Y(Y0),y2:Y(Y1),stroke:"var(--grid)"},svg);el("line",{x1:X(X0),x2:X(X1),y1:Y(v),y2:Y(v),stroke:"var(--grid)"},svg);}
+el("clipPath",{id:"pwc"},svg).appendChild(el("rect",{x:X(X0),y:Y(Y1),width:X(X1)-X(X0),height:Y(Y0)-Y(Y1)}));
+const g=el("g",{"clip-path":"url(#pwc)"},svg);
+const yAt=(x,k)=>(k-b-w1*x)/w2;
+el("polygon",{points:[[X0,yAt(X0,1)],[X1,yAt(X1,1)],[X1,yAt(X1,-1)],[X0,yAt(X0,-1)]].map(p=>X(p[0])+","+Y(p[1])).join(" "),fill:"var(--g)","fill-opacity":.08},g);
+[1,-1].forEach(k=>el("line",{x1:X(X0),y1:Y(yAt(X0,k)),x2:X(X1),y2:Y(yAt(X1,k)),stroke:"var(--muted)","stroke-dasharray":"6 5","stroke-width":1.4},g));
+el("line",{x1:X(X0),y1:Y(yAt(X0,0)),x2:X(X1),y2:Y(yAt(X1,0)),stroke:"var(--ink)","stroke-width":2.2},g);
+const lab=(x,k,t)=>{const y=yAt(x,k);el("text",{x:X(x)+6,y:Y(y)-6},svg).textContent=t;};
+lab(-1.95,1,"分数 +1");lab(-2.25,0,"分数 0");lab(-4.38,-1,"分数 −1");
+const pts=[[-3.0,-1.9,-1],[-4.0,-3.2,-1],[-2.6,-0.6,-1],[-1.4,-3.6,1],[-2.0,-4.4,1],[-2.4,-3.3,1]];
+pts.forEach(p=>{if(p[2]<0)el("circle",{cx:X(p[0]),cy:Y(p[1]),r:5,fill:"var(--cA)",opacity:.45},g);else el("rect",{x:X(p[0])-5,y:Y(p[1])-5,width:10,height:10,fill:"var(--cB)",opacity:.45},g);});
+el("text",{x:X(x0[0])+10,y:Y(x0[1])+16},svg).textContent="13 号点 x₀";
+const path=el("line",{x1:X(x0[0]),y1:Y(x0[1]),stroke:"var(--g)","stroke-width":3,"stroke-linecap":"round"},svg);
+el("circle",{cx:X(x0[0]),cy:Y(x0[1]),r:5,fill:"var(--cB)"},svg);
+const dot=el("circle",{r:7,fill:"var(--g)",stroke:"var(--surface)","stroke-width":2},svg);
+const cs=$("cw"),CW=260,CH=170,l=34,r=10,t=12,bt=26,dmax=1.33;
+const CX=d=>l+d/dmax*(CW-l-r),CY=v=>t+(1.2-v)/2.4*(CH-t-bt);
+[1,0,-1].forEach(v=>{el("line",{x1:l,x2:CW-r,y1:CY(v),y2:CY(v),stroke:v===0?"var(--ink)":"var(--line)","stroke-width":v===0?1.5:1,"stroke-dasharray":v===0?"":"4 4"},cs);el("text",{x:l-5,y:CY(v)+4,"text-anchor":"end"},cs).textContent=(v>0?"+":"")+v;});
+[0,0.66,1.33].forEach(d=>{el("text",{x:CX(d),y:CH-bt+16,"text-anchor":d===1.33?"end":"middle"},cs).textContent=d;});
+el("text",{x:l,y:CH-2},cs).textContent="走了多远 d";
+el("text",{x:CW-r,y:CY(0)-5,"text-anchor":"end"},cs).textContent="分界线";
+el("line",{x1:CX(0),y1:CY(1),x2:CX(dmax),y2:CY(1-nw*dmax),stroke:"var(--g)","stroke-width":2.5},cs);
+const vl=el("line",{stroke:"var(--muted)","stroke-dasharray":"2 3"},cs);
+const cd=el("circle",{r:5,fill:"var(--g)"},cs);
+const sl=$("dw");
+function draw(){const d=+sl.value,x=x0[0]-d*u[0],y=x0[1]-d*u[1],sc=score(x,y),fm=1-nw*d;
+  path.setAttribute("x2",X(x));path.setAttribute("y2",Y(y));dot.setAttribute("cx",X(x));dot.setAttribute("cy",Y(y));
+  $("dwv").textContent=d.toFixed(3);$("rwxy").textContent=`(${x.toFixed(2)}, ${y.toFixed(2)})`;
+  const f=v=>(Math.abs(v)<0.005?"0.00":(v>0?"+":"")+v.toFixed(2));
+  $("rwsc").textContent=f(sc);$("rwfm").textContent=f(fm);
+  vl.setAttribute("x1",CX(d));vl.setAttribute("x2",CX(d));vl.setAttribute("y1",CY(1.2));vl.setAttribute("y2",CY(-1.2));
+  cd.setAttribute("cx",CX(d));cd.setAttribute("cy",CY(fm));
+  let chip;
+  if(d<0.005)chip=`<span class="chip" style="color:var(--muted)">在 +1 虚线上，分数 = 1</span>`;
+  else if(Math.abs(fm)<0.012)chip=`<span class="chip" style="color:var(--ok)">到达分界线：分数 = 0，d = 1/‖w‖ ≈ 0.66</span>`;
+  else if(fm>0)chip=`<span class="chip" style="color:var(--g)">还没到，分数还是正的</span>`;
+  else if(fm>-0.988)chip=`<span class="chip" style="color:var(--muted)">越过了分界线，分数变负</span>`;
+  else chip=`<span class="chip" style="color:var(--ok)">到达 −1 虚线：走了 2/‖w‖ ≈ 1.33，就是 margin</span>`;
+  $("rwchip").innerHTML=chip;}
+sl.addEventListener("input",draw);draw();
+})();
+</script>
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function arrow(g,x1,y1,x2,y2,c){el("line",{x1,y1,x2,y2,stroke:c,"stroke-width":2.5,"stroke-linecap":"round"},g);const a=Math.atan2(y2-y1,x2-x1),h=9;el("path",{d:`M${x2},${y2} L${x2-h*Math.cos(a-0.45)},${y2-h*Math.sin(a-0.45)} L${x2-h*Math.cos(a+0.45)},${y2-h*Math.sin(a+0.45)} Z`,fill:c},g);}
+function plane(svg,x0,x1,y0,y1){
+  const W=360,H=360,pad=18,s=(W-2*pad)/(x1-x0);
+  const X=x=>pad+(x-x0)*s,Y=y=>H-pad-(y-y0)*s;
+  for(let v=Math.ceil(x0*2)/2;v<=x1;v+=0.5)el("line",{x1:X(v),x2:X(v),y1:Y(y0),y2:Y(y1),stroke:"var(--grid)"},svg);
+  for(let v=Math.ceil(y0*2)/2;v<=y1;v+=0.5)el("line",{x1:X(x0),x2:X(x1),y1:Y(v),y2:Y(v),stroke:"var(--grid)"},svg);
+  el("clipPath",{id:svg.id+"c"},svg).appendChild(el("rect",{x:X(x0),y:Y(y1),width:X(x1)-X(x0),height:Y(y0)-Y(y1)}));
+  return {X,Y,s,clip:`url(#${svg.id}c)`};
+}
+function chart(svg,dmax,ymax,act,pred){
+  const W=260,H=150,l=34,r=10,t=10,b=26;
+  const X=d=>l+d/dmax*(W-l-r),Y=v=>H-b-v/ymax*(H-t-b);
+  el("line",{x1:l,x2:W-r,y1:Y(0),y2:Y(0),stroke:"var(--line)"},svg);
+  el("line",{x1:l,x2:l,y1:Y(0),y2:Y(ymax),stroke:"var(--line)"},svg);
+  for(let v=0;v<=ymax+1e-9;v+=ymax/4){el("text",{x:l-5,y:Y(v)+4,"text-anchor":"end"},svg).textContent=v.toFixed(0);}
+  [0,0.5,1].forEach(d=>{el("text",{x:X(d),y:H-b+15,"text-anchor":"middle"},svg).textContent=d;});
+  el("text",{x:W-r,y:H-b+15,"text-anchor":"end"},svg).textContent="d";
+  const path=fn=>{let s="";for(let i=0;i<=60;i++){const d=dmax*i/60;s+=(i?"L":"M")+X(d)+","+Y(fn(d));}return s;};
+  el("path",{d:path(act),fill:"none",stroke:"var(--g)","stroke-width":3},svg);
+  el("path",{d:path(pred),fill:"none",stroke:"var(--f)","stroke-width":2,"stroke-dasharray":"6 4"},svg);
+  const vline=el("line",{stroke:"var(--muted)","stroke-dasharray":"2 3"},svg);
+  const pa=el("circle",{r:4.5,fill:"var(--g)"},svg),pp=el("circle",{r:3.5,fill:"var(--f)"},svg);
+  return d=>{vline.setAttribute("x1",X(d));vline.setAttribute("x2",X(d));vline.setAttribute("y1",Y(0));vline.setAttribute("y2",Y(ymax));
+    pa.setAttribute("cx",X(d));pa.setAttribute("cy",Y(act(d)));pp.setAttribute("cx",X(d));pp.setAttribute("cy",Y(pred(d)));};
+}
+/* Case A: linear */
+(()=>{
+  const svg=$("gA"),P=plane(svg,-0.3,1.3,-0.3,1.3);
+  const g=el("g",{"clip-path":P.clip},svg);
+  for(let k=-2;k<=10;k++){
+    const xa=-0.3,xb=1.3,ya=(k-3*xa)/4,yb=(k-3*xb)/4;
+    el("line",{x1:P.X(xa),y1:P.Y(ya),x2:P.X(xb),y2:P.Y(yb),stroke:"var(--f)","stroke-opacity":k%5===0?.6:.28,"stroke-width":k%5===0?1.6:1},g);
+  }
+  [[0,"f = 0"],[5,"f = 5"]].forEach(([k,t])=>{const x=k===0?-0.25:0.85,y=(k-3*x)/4;el("text",{x:P.X(x)+4,y:P.Y(y)-6,style:"fill:var(--f)"},svg).textContent=t;});
+  el("line",{x1:P.X(0),y1:P.Y(0),x2:P.X(0.6*1.4),y2:P.Y(0.8*1.4),stroke:"var(--muted)","stroke-dasharray":"4 4"},svg);
+  const ag=el("g",{},svg);arrow(ag,P.X(0),P.Y(0),P.X(0.6*0.35),P.Y(0.8*0.35),"var(--ink)");
+  el("circle",{cx:P.X(0),cy:P.Y(0),r:4,fill:"var(--muted)"},svg);
+  const dot=el("circle",{r:6.5,fill:"var(--g)"},svg);
+  const upd=chart($("cA"),1.4,8,d=>5*d,d=>5*d);
+  const s=$("dA");
+  function draw(){const d=+s.value,x=0.6*d,y=0.8*d;dot.setAttribute("cx",P.X(x));dot.setAttribute("cy",P.Y(y));
+    $("dAv").textContent=d.toFixed(2);$("rAxy").textContent=`(${x.toFixed(2)}, ${y.toFixed(2)})`;
+    $("rAact").textContent=(3*x+4*y).toFixed(3);$("rApred").textContent=(5*d).toFixed(3);$("rAgap").textContent=Math.abs(3*x+4*y-5*d).toFixed(3);upd(d);}
+  s.addEventListener("input",draw);draw();
+})();
+/* Case B: bowl */
+(()=>{
+  const svg=$("gB"),P=plane(svg,-0.2,2.6,-0.2,2.6);
+  const g=el("g",{"clip-path":P.clip},svg);
+  for(let k=1;k<=14;k++)el("circle",{cx:P.X(0),cy:P.Y(0),r:Math.sqrt(k)*P.s,fill:"none",stroke:"var(--f)","stroke-opacity":k===2?.65:.28,"stroke-width":k===2?1.6:1},g);
+  el("text",{x:P.X(0.08),y:P.Y(1.25),style:"fill:var(--f)"},svg).textContent="f = 2";
+  const r2=Math.SQRT1_2;
+  el("line",{x1:P.X(1),y1:P.Y(1),x2:P.X(1+1.4*r2),y2:P.Y(1+1.4*r2),stroke:"var(--muted)","stroke-dasharray":"4 4"},svg);
+  const ag=el("g",{},svg);arrow(ag,P.X(1),P.Y(1),P.X(1+0.35*r2),P.Y(1+0.35*r2),"var(--ink)");
+  el("circle",{cx:P.X(1),cy:P.Y(1),r:4,fill:"var(--muted)"},svg);
+  const cur=el("circle",{fill:"none",stroke:"var(--g)","stroke-width":1.8,"stroke-dasharray":"3 3"},g);
+  const dot=el("circle",{r:6.5,fill:"var(--g)"},svg);
+  const k=2*Math.SQRT2;
+  const upd=chart($("cB"),1.4,8,d=>k*d+d*d,d=>k*d);
+  const s=$("dB");
+  function draw(){const d=+s.value,x=1+d*r2,y=x,f=x*x+y*y,act=f-2,pred=k*d;
+    dot.setAttribute("cx",P.X(x));dot.setAttribute("cy",P.Y(y));cur.setAttribute("cx",P.X(0));cur.setAttribute("cy",P.Y(0));cur.setAttribute("r",Math.sqrt(f)*P.s);
+    $("dBv").textContent=d.toFixed(2);$("rBxy").textContent=`(${x.toFixed(3)}, ${y.toFixed(3)})`;
+    $("rBact").textContent=act.toFixed(3);$("rBpred").textContent=pred.toFixed(3);$("rBgap").textContent=(act-pred).toFixed(3);upd(d);}
+  s.addEventListener("input",draw);draw();
+})();
+})();
+</script>
+
+</body></html>

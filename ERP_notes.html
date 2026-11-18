@@ -228,11 +228,6 @@
   <li id="s2-eog">
     <p>把 3 个眼电通道标成 EOG 类型，计算双极眼电：HEOG = 左 − 右，VEOG = VEOG_lower − FP2，以方便后续剔除伪迹（为什么要算出双极眼电以及如何算出，<a href="ERP_notes_extra/eog_bipolar.zh.html" target="_blank" rel="noopener">链接HTML3</a>）</p>
     <p>输出文件是 <code>data/step2_eog-raw.fif</code>。</p>
-    <details class="explainer">
-      <summary>展开：双极眼电 EOG 的原理（HTML3）</summary>
-      <iframe data-src="ERP_notes_extra/eog_bipolar.zh.html" title="展开：双极眼电 EOG 的原理（HTML3）"></iframe>
-      <p class="explainer-open"><a href="ERP_notes_extra/eog_bipolar.zh.html" target="_blank" rel="noopener">在新标签页打开</a></p>
-    </details>
   </li>
   <li id="s2-avgref">
     <p>设置平均参考值：电压表示永远是“相对于某个标准电压的电压差”，在本次数据集中，由于实验人员使用的Biosemi记录设备没有真正的参考电压，只有一个多余的电极作为参考。所以需要人为另外选择一个参考电压。我们选择的是：在每一个时间点，先算出 30 个头皮电极的平均电压，再让每个电极都减掉这个平均：</p>
@@ -626,11 +621,6 @@
   <li id="en-s2-eog">
     <p>Mark the 3 eye channels as EOG and compute bipolar EOG: HEOG = left − right, VEOG = VEOG_lower − FP2, to make artifact rejection easier later (why the bipolar EOG is needed and how it is computed: see <a href="ERP_notes_extra/eog_bipolar.en.html" target="_blank" rel="noopener">HTML3</a>).</p>
     <p>Output file: <code>data/step2_eog-raw.fif</code>.</p>
-    <details class="explainer">
-      <summary>Expand: how bipolar EOG works (HTML3)</summary>
-      <iframe data-src="ERP_notes_extra/eog_bipolar.en.html" title="Expand: how bipolar EOG works (HTML3)"></iframe>
-      <p class="explainer-open"><a href="ERP_notes_extra/eog_bipolar.en.html" target="_blank" rel="noopener">Open in a new tab</a></p>
-    </details>
   </li>
   <li id="en-s2-avgref">
     <p>Set an average reference. A voltage is always “the difference from some reference voltage”. In this dataset the Biosemi recording system has no true reference, only a spare electrode acting as one, so a reference has to be chosen. We chose the following: at every time point, compute the mean voltage of the 30 scalp electrodes, then subtract this mean from every electrode:</p>

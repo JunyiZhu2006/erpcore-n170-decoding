@@ -1,6 +1,6 @@
 # 基于 ERP CORE N170 单被试脑电的人脸与汽车知觉时间分辨解码
 
-完整笔记（中文 / English）：[ERP_notes.html](ERP_notes.html)
+完整笔记（中文 / English）：<https://junyizhu2006.github.io/erpcore-n170-decoding/ERP_notes.html>
 
 ## 文件
 

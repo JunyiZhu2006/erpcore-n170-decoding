@@ -286,3 +286,13 @@
   - 估计：1000 次置换约 25 分钟，主分析约 15 秒（比 Step 6 快，150 维时 SVM 收敛得更快）
 - 输出：data/step8_accuracy_win5_100hz.npz；data/step8_perm_win5_100hz/（perm_XXXX.npy、progress.log）；data/step8_null_win5_100hz.npz；figs/step8_permutation_win5_100hz.png
 - 运行：`.venv\Scripts\python.exe step8_window.py`；只汇总：加 `--summary-only`
+- 小规模测试（2026-11-18，脚本在会话临时目录，输出也写在那里，没碰 data/ 和 figs/）：
+  - make_windows：形状、窗口数、所有值的排列、窗口中心时间都对；宽度 1 时等于原来的 X；步长 5 时是 20 个窗口
+  - 先拼窗口再做 trace，和先做 trace 再拼窗口：最大差 0（逐位相同）
+  - 和 sklearn 对答案（主分析第 1 次抽脸的前 24 个分组 = 27 648 个 SVM、55 296 个测试预测；sklearn 一侧独立实现：先做 trace，再从 trace 切窗口，再按 decode_curve 的循环跑 SVC）：
+    - 预测一致 99.9783%（12 个不同），不同的那些决策值都在 0.0005 以内（决策值中位数大小 0.74），也就是本来就贴着分界线
+    - 决策值最大差 0.0025；单条曲线某个窗口最多差 1 个预测（0.042）；24 条平均后最大差 0.0017（和 Step 6 的核对结果同一个水平）
+    - 建核矩阵每次 10 个分组和 50 个分组，结果逐位相同（只是分批方式不同）
+  - main_analysis：存的字段齐全，平均曲线 = 2000 条的平均，时间 = 窗口中心，前 24 条和上面单独算的逐位相同；用时 14 秒
+  - permutations（只跑 5 次）：每次一个文件 (20, 96)，和直接重算逐位相同，没留下 .tmp 文件；再运行一次时 0 个要做（断点续跑正常）
+  - summarise：p 值和按公式手算的一致，时间是窗口中心，图能正常生成；显存峰值 6.6 GB

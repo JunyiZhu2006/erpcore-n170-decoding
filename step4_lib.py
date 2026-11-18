@@ -66,9 +66,15 @@ def shuffle_labels(y, shuffle_seed):
 def make_groups(y, seeds, n_groupings=N_GROUPINGS, per_trace=TRIALS_PER_TRACE):
     """Draw faces and group trials into traces, from the labels y.
 
-    For each seed (one per face draw): pick as many face trials as there are
-    car trials, then n_groupings times shuffle each class and cut it into
-    groups of per_trace trials.
+    For each seed (one per face draw): both classes get the same number of
+    trials n_per_class (the smaller class size, rounded down to a multiple of
+    per_trace); a class with more trials than that is drawn down at random.
+    Then n_groupings times shuffle each class and cut it into groups of
+    per_trace trials.
+
+    With 60 faces and 48 cars (steps 4-6) only the faces are drawn and all
+    cars are used, with the same random numbers as before cars could be
+    drawn too, so those groups are unchanged.
 
     Returns
     -------
@@ -78,17 +84,18 @@ def make_groups(y, seeds, n_groupings=N_GROUPINGS, per_trace=TRIALS_PER_TRACE):
     """
     face_idx = np.where(y == 1)[0]
     car_idx = np.where(y == 0)[0]
-    assert len(face_idx) >= len(car_idx), 'expects at least as many faces as cars'
-    n_per_class = len(car_idx)
+    n_per_class = per_trace * (min(len(face_idx), len(car_idx)) // per_trace)
     n_traces = n_per_class // per_trace
     face_draws = np.empty((len(seeds), n_per_class), dtype=int)
     groups = np.empty((len(seeds), n_groupings, 2, n_traces, per_trace), dtype=int)
     for d, seed in enumerate(seeds):
         rng = np.random.default_rng(seed)
         face_draws[d] = np.sort(rng.choice(face_idx, size=n_per_class, replace=False))
+        car_draw = (car_idx if len(car_idx) == n_per_class else
+                    np.sort(rng.choice(car_idx, size=n_per_class, replace=False)))
         for g in range(n_groupings):
             groups[d, g, 0] = rng.permutation(face_draws[d]).reshape(-1, per_trace)
-            groups[d, g, 1] = rng.permutation(car_idx).reshape(-1, per_trace)
+            groups[d, g, 1] = rng.permutation(car_draw).reshape(-1, per_trace)
     return face_draws, groups
 
 

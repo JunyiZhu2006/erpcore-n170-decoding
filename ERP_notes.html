@@ -226,7 +226,7 @@
 
 <ol class="steps">
   <li id="s2-eog">
-    <p>把 3 个眼电通道标成 EOG 类型，计算双极眼电：HEOG = 左 − 右，VEOG = VEOG_lower − FP2，以方便后续剔除伪迹（为什么要算出双极眼电以及如何算出，链接HTML3）</p>
+    <p>把 3 个眼电通道标成 EOG 类型，计算双极眼电：HEOG = 左 − 右，VEOG = VEOG_lower − FP2，以方便后续剔除伪迹（为什么要算出双极眼电以及如何算出，<a href="ERP_notes_extra/eog_bipolar.zh.html" target="_blank" rel="noopener">链接HTML3</a>）</p>
     <p>输出文件是 <code>data/step2_eog-raw.fif</code>。</p>
     <details class="explainer">
       <summary>展开：双极眼电 EOG 的原理（HTML3）</summary>
@@ -274,7 +274,7 @@
     </table>
     </div>
     <p>结果存为 <code>data/step2_hp-raw.fif</code></p>
-    <p>2.再采用30Hz的低通，为了去掉60Hz交流电的人体感应信号以及一部分肌电。（关于滤波原理与具体操作参考HTML2，这里面原理部分是claude写的，我没学会）（EOG数据也参与）</p>
+    <p>2.再采用30Hz的低通，为了去掉60Hz交流电的人体感应信号以及一部分肌电。（关于滤波原理与具体操作参考<a href="ERP_notes_extra/eeg_filtering.zh.html" target="_blank" rel="noopener">HTML2</a>，这里面原理部分是claude写的，我没学会）（EOG数据也参与）</p>
     <details class="explainer">
       <summary>展开：EEG 滤波原理（HTML2）</summary>
       <iframe data-src="ERP_notes_extra/eeg_filtering.zh.html" title="展开：EEG 滤波原理（HTML2）"></iframe>
@@ -624,7 +624,7 @@
 
 <ol class="steps">
   <li id="en-s2-eog">
-    <p>Mark the 3 eye channels as EOG and compute bipolar EOG: HEOG = left − right, VEOG = VEOG_lower − FP2, to make artifact rejection easier later (why the bipolar EOG is needed and how it is computed: see HTML3).</p>
+    <p>Mark the 3 eye channels as EOG and compute bipolar EOG: HEOG = left − right, VEOG = VEOG_lower − FP2, to make artifact rejection easier later (why the bipolar EOG is needed and how it is computed: see <a href="ERP_notes_extra/eog_bipolar.en.html" target="_blank" rel="noopener">HTML3</a>).</p>
     <p>Output file: <code>data/step2_eog-raw.fif</code>.</p>
     <details class="explainer">
       <summary>Expand: how bipolar EOG works (HTML3)</summary>
@@ -672,7 +672,7 @@
     </table>
     </div>
     <p>Saved as <code>data/step2_hp-raw.fif</code></p>
-    <p>2. Then a 30 Hz low-pass, to remove the 60 Hz mains pickup and part of the muscle activity. (For how filtering works and the details, see HTML2; the theory there was written by Claude and I have not learned it yet.) (The EOG data are filtered too.)</p>
+    <p>2. Then a 30 Hz low-pass, to remove the 60 Hz mains pickup and part of the muscle activity. (For how filtering works and the details, see <a href="ERP_notes_extra/eeg_filtering.en.html" target="_blank" rel="noopener">HTML2</a>; the theory there was written by Claude and I have not learned it yet.) (The EOG data are filtered too.)</p>
     <details class="explainer">
       <summary>Expand: how EEG filtering works (HTML2)</summary>
       <iframe data-src="ERP_notes_extra/eeg_filtering.en.html" title="Expand: how EEG filtering works (HTML2)"></iframe>

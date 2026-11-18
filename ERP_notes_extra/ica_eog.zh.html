@@ -1,0 +1,590 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ICA 去眼电</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Noto+Sans+SC:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same notebook column as HTML1-3. Steps first (input / action / output), then principles, each principle building on the previous figure */
+:root{
+  --bg:#f2f5f6; --surface:#ffffff; --ink:#15212a; --muted:#566673; --line:#d2dbe1; --grid:#e5ebee;
+  --sig:#6a4dd6;      /* accent, output y1 */
+  --raw:#8b98a3;      /* data points */
+  --pos:#d0573a;      /* blink component */
+  --neg:#1c8cc6;      /* alpha component */
+  --ok:#1f8a5b; --cut:#c2385a;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif;
+  --f-math:"STIX Two Text","Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10161a; --surface:#172027; --ink:#e2eaef; --muted:#97a7b3; --line:#2a3741; --grid:#202b33;
+  --sig:#a592ff; --raw:#6c7b87; --pos:#f08a6c; --neg:#4cb8ec; --ok:#4fc28b; --cut:#f0718d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10161a; --surface:#172027; --ink:#e2eaef; --muted:#97a7b3; --line:#2a3741; --grid:#202b33;
+  --sig:#a592ff; --raw:#6c7b87; --pos:#f08a6c; --neg:#4cb8ec; --ok:#4fc28b; --cut:#f0718d; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.8;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5.4vw,44px);line-height:1.12;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.3;margin:20px 0 0;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .step{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--sig);border:1px solid var(--sig);border-radius:4px;padding:0 6px;flex:none}
+h3.pt{margin:14px 0 0;font-family:var(--f-display);font-size:19px;line-height:1.4}
+p{margin:0;max-width:66ch}
+.lede{font-size:18px;color:var(--muted)}
+.eq{font-family:var(--f-math);font-size:21px;text-align:center;padding:14px 10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto;white-space:nowrap}
+.eq i{font-style:italic}
+.vec{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;padding:1px .42em;margin:0 .12em;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor;border-radius:8px;line-height:1.3;font-size:.9em}
+.map{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500;text-transform:uppercase}
+.note{font-size:14.5px;color:var(--muted)}
+code{font-family:var(--f-mono);font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.fig-cap{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+svg.plot{width:100%;height:auto;display:block;max-width:100%}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:0;border-top:2.5px solid;vertical-align:middle;margin-right:6px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:6px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:s}
+.steps>li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;counter-increment:s}
+.steps>li::before{content:counter(s);font-family:var(--f-mono);font-size:14px;color:var(--sig);border:1px solid var(--sig);border-radius:50%;width:28px;height:28px;display:grid;place-items:center;margin-top:2px}
+.steps>li>div{border-bottom:1px solid var(--line);padding-bottom:14px;min-width:0}
+.steps h3{margin:0;font-family:var(--f-display);font-size:17px}
+.steps p{margin-top:4px}
+.lane{display:inline-block;font-family:var(--f-mono);font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;margin-right:6px}
+.io{display:grid;grid-template-columns:3.2em minmax(0,1fr);gap:4px 10px;margin:8px 0 0;font-size:15.5px}
+.io dt{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);padding-top:3px}
+.io dd{margin:0}
+.why{font-size:13.5px;color:var(--sig);margin-top:6px}
+.duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.sub{font-size:13.5px;color:var(--muted)}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;font-size:14.5px}
+.ctrl input[type=range]{flex:1 1 220px;accent-color:var(--sig)}
+.ctrl label.v{font-family:var(--f-mono);min-width:8em}
+.ctrl button{font:inherit;font-size:14px;padding:6px 12px;border-radius:6px;border:1px solid var(--sig);background:transparent;color:var(--sig);cursor:pointer}
+.ctrl button:hover{background:color-mix(in srgb,var(--sig) 12%,transparent)}
+.ctrl button:focus-visible,.ctrl input:focus-visible,.chk input:focus-visible{outline:2px solid var(--sig);outline-offset:2px}
+.rd{display:flex;flex-direction:column;gap:8px;font-size:14.5px}
+.rd .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chk{display:flex;align-items:center;gap:8px;font-size:14.5px;cursor:pointer}
+.chk input{accent-color:var(--sig);width:16px;height:16px}
+.stages{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-family:var(--f-mono)}
+@media (max-width:620px){.duo{grid-template-columns:minmax(0,1fr)}}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{font:inherit;font-size:14px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--sig);color:var(--sig);background:color-mix(in srgb,var(--sig) 10%,transparent)}
+.seg button:focus-visible{outline:2px solid var(--sig);outline-offset:2px}
+input[type=range]:disabled{opacity:.4}
+main{max-width:1180px}
+main>*{width:100%;max-width:760px;align-self:center}
+main>.split{max-width:1180px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:20px 30px;align-items:start}
+.split>h3{grid-column:1/-1}
+.split>.txt{display:flex;flex-direction:column;gap:18px;min-width:0}
+.split>.side{position:sticky;top:12px;min-width:0;max-height:calc(100vh - 24px);overflow-y:auto}
+@media (max-width:1020px){.split{grid-template-columns:minmax(0,1fr)}.split>h3{order:-2}.split>.side{order:-1;position:static;max-height:none;overflow:visible}}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">ERP decoding 练习 · 预处理笔记</div>
+  <h1>ICA 去眼电</h1>
+  <p class="lede">剔除 trial 是把有眼电的整段数据扔掉；ICA 是把眼电从数据里减掉，trial 留着。第 1 节讲 ICA 是什么，第 2 节按顺序讲每一步，第 3 节讲原理。</p>
+</header>
+
+<h2><span class="step">1</span>ICA 是什么</h2>
+<p>头皮上每个电极记到的都是混合信号：大脑活动、眨眼、眼动按不同比例叠在一起。比如眨眼在 FP1、FP2 上很大，到后脑 PO8 只剩一点点，但每个电极上都有一些。</p>
+<p>ICA 假设：每个时刻，各电极的电压都是几个<b>彼此独立</b>的"成分"按固定比例相加得到的：</p>
+<div class="eq"><i>x</i> = <i>A</i> <i>s</i>　，　<i>x</i> = <span class="vec"><span><i>x</i><sub>FP1</sub></span><span>⋮</span><span><i>x</i><sub>PO8</sub></span></span>　，　<i>s</i> = <span class="vec"><span><i>s</i><sub>1</sub></span><span>⋮</span><span><i>s</i><sub>n</sub></span></span></div>
+<div class="map"><table>
+  <thead><tr><th>符号</th><th>是什么</th><th></th></tr></thead>
+  <tbody>
+    <tr><td>x</td><td>某一时刻各电极测到的电压</td><td>已知，这是我们手里唯一的数据</td></tr>
+    <tr><td>s</td><td>同一时刻每个成分的强度。比如眨眼成分，眨眼时很大，平时接近 0</td><td>未知</td></tr>
+    <tr><td>A</td><td>混合矩阵。第 j 列是第 j 个成分在各电极上的比例，画在头皮上就是这个成分的<b>地形图</b></td><td>未知</td></tr>
+    <tr><td>W</td><td>解混矩阵，等于 A 的逆，满足 s = W x</td><td>未知</td></tr>
+  </tbody>
+</table></div>
+<p>ICA 只用 x 算出 W。有了 W，就有了 A（= W⁻¹）和 s（= W x）。接着把眼电成分设成 0，再用 x = A s 拼回各电极，就得到没有眼电的数据。</p>
+
+<h2><span class="step">2</span>每一步用什么数据、做什么</h2>
+<p>ICA 放在滤波之后、切 epoch 之前。第 1–4 步在一份<b>副本</b>上做，目的是算出 W、A 并选出眼电成分；第 5–7 步在<b>正式数据</b>上做。</p>
+
+<ol class="steps">
+  <li><div><h3><span class="lane" style="color:var(--muted)">副本</span>准备一份副本</h3>
+    <dl class="io">
+      <dt>用</dt><dd>已经 0.1–30 Hz 滤波的连续数据</dd>
+      <dt>做</dt><dd>复制一份，对副本做 1 Hz 高通，再排除被试乱动、咳嗽这类幅度特别大的片段</dd>
+      <dt>得到</dt><dd>一份专门用来算 ICA 的副本。正式数据保持不变</dd>
+    </dl>
+    <p class="why">为什么用 1 Hz → 原理 ①</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--muted)">副本</span>白化</h3>
+    <dl class="io">
+      <dt>用</dt><dd>副本里 30 个头皮电极的数据（<b>不用眼电通道</b>）</dd>
+      <dt>做</dt><dd>用 PCA 把 30 个电极的数据换成一组新的信号，它们彼此不相关，方差都是 1。做过平均参考后，30 个电极最多只能换出 29 个这样的信号，所以成分最多 29 个</dd>
+      <dt>得到</dt><dd>白化后的数据 z，以及白化矩阵（记录这一步是怎么换的）</dd>
+    </dl>
+    <p class="why">白化是什么 → 先看原理 ②，再看原理 ③</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--muted)">副本</span>旋转</h3>
+    <dl class="io">
+      <dt>用</dt><dd>白化后的数据 z</dd>
+      <dt>做</dt><dd>从随机的方向出发，一点点转动（梯度上升），找到一组方向：把数据投到这些方向上，得到的每个信号都"最不像正态分布"</dd>
+      <dt>得到</dt><dd>W = 旋转矩阵 × 白化矩阵，A = W⁻¹。由此得到每个成分的<b>时间曲线</b>（s = W x 的一行）和<b>地形图</b>（A 的一列）</dd>
+    </dl>
+    <p class="note">起点是随机的，所以代码里要设 <code>random_state</code>，每次运行结果才一样。</p>
+    <p class="why">为什么要找"最不像正态分布"的方向 → 原理 ④</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--muted)">副本</span>认出眼电成分</h3>
+    <dl class="io">
+      <dt>用</dt><dd>各成分的时间曲线和地形图，以及副本里的双极 HEOG、VEOG。<b>眼电通道到这一步才第一次用到</b></dd>
+      <dt>做</dt><dd>先用 <code>find_bads_eog</code> 算每个成分和 HEOG、VEOG 的相关性，相关性高的作为候选；再自己看候选成分的地形图和时间曲线，按下表确认</dd>
+      <dt>得到</dt><dd>要去掉的成分编号，通常 1 到 3 个</dd>
+    </dl>
+    <div class="map"><table>
+      <thead><tr><th>成分</th><th>地形图</th><th>时间曲线</th></tr></thead>
+      <tbody>
+        <tr><td>眨眼</td><td>集中在前额，左右对称</td><td>一个个大尖峰，和 VEOG 几乎一样</td></tr>
+        <tr><td>水平眼动</td><td>在前额两侧，一边正一边负</td><td>阶梯状跳变，和 HEOG 几乎一样</td></tr>
+        <tr><td>大脑活动</td><td>比较分散，常在后部或中央</td><td>和眼电没有对应关系</td></tr>
+      </tbody>
+    </table></div>
+    <p class="why">为什么不直接拿眼电通道当眼电成分 → 原理 ⑤；为什么每次都要自己认 → 原理 ⑥</p></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--sig)">正式数据</span>去掉眼电成分</h3>
+    <dl class="io">
+      <dt>用</dt><dd>0.1–30 Hz 的正式数据 x，第 3 步得到的 W 和 A，第 4 步选出的编号</dd>
+      <dt>做</dt><dd>先算 s = W x，再把选出的成分设成 0，最后用 x = A s 拼回各电极</dd>
+      <dt>得到</dt><dd>去掉了眼电的正式数据</dd>
+    </dl></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--sig)">正式数据</span>检查效果</h3>
+    <dl class="io">
+      <dt>用</dt><dd>校正前和校正后的正式数据</dd>
+      <dt>做</dt><dd>比较 FP1、FP2：眨眼尖峰应该消失。比较 PO8：N170 应该基本不变</dd>
+      <dt>得到</dt><dd>确认没有误删大脑成分。如果 N170 明显变小，回到第 4 步重新检查</dd>
+    </dl></div></li>
+
+  <li><div><h3><span class="lane" style="color:var(--sig)">正式数据</span>切 epoch、剔除 trial</h3>
+    <dl class="io">
+      <dt>用</dt><dd>校正后的正式数据，以及<b>校正前</b>的双极眼电</dd>
+      <dt>做</dt><dd>照常切 epoch，按阈值剔除坏 trial。判断"刺激出现时有没有眨眼"，要用校正前的眼电</dd>
+      <dt>得到</dt><dd>可以拿去做 decoding 的 epochs</dd>
+    </dl>
+    <p class="note">校正之后，眨眼在数据里看不出来了；但被试在那一刻确实没看到图片，所以这种 trial 仍然要删 [1]。</p></div></li>
+</ol>
+
+<h2><span class="step">3</span>原理</h2>
+
+<h3 class="pt">① 为什么在 1 Hz 的副本上算，却能用在 0.1 Hz 的数据上</h3>
+<p>ICA 假设每个成分在各电极上的比例是固定的，也就是 x = A s 里的 A 不随时间变。慢漂移来自出汗、电极接触慢慢变化，它在各电极上的比例一直在变，不符合这个假设，会让分解变差。所以算之前先用 1 Hz 高通把它去掉。</p>
+<p>算出来的 W、A 只描述"每个成分在各电极上占多大比例"。这个比例由眼睛、大脑和电极的位置决定，和数据滤到哪个频段无关。所以在 1 Hz 副本上算出的 W、A，可以直接用在 0.1 Hz 的正式数据上。</p>
+
+<div class="split">
+<h3 class="pt">② 先看懂散点图：一个点代表一个时刻</h3>
+<div class="txt">
+<p>原理 ③、④ 都要用散点图，这里先用一个最小的例子说明怎么读：这里用了以下两个成分和两个电极。</p>
+<p>两个成分分别是眨眼（偶尔发生）和 10 Hz 的 α 脑电波（一直都在）；随机选取的两个电极分别是 FP2 和 Pz。混合矩阵 A 上对这两个成分进行描述的两列假设是：</p>
+<div class="eq">眨眼那一列 = <span class="vec"><span>100</span><span>25</span></span>　，　α 波那一列 = <span class="vec"><span>15</span><span>30</span></span></div>
+<p>代入之后可以得到：眨眼强度为 1 时，FP2 上是 100 μV，Pz 上是 25 μV；α 波强度为 1 时，FP2 上是 15 μV，Pz 上是 30 μV。</p>
+<p>散点图的画法是：每个时刻，FP2 有一个值，Pz 有一个值，把这两个值分别当作横坐标和纵坐标，画成一个点。8 秒里所有时刻的点叠在一起，就是右边图里散点图上的那一团。</p>
+<p>点"播放"，看点怎么走：</p>
+<p>没有眨眼、只有 α 波的时候，FP2 和 Pz 跟着 α 波一起小幅上下，点就在中间沿一条斜线来回走。一眨眼，FP2 猛增到 100 左右，Pz 增到 25 左右，点就沿另一条线冲向右边，眨完再回来。</p>
+<p>所以点云是由两条"臂"组成的。勾选"显示 A 的两列"可以看到：<b>每条臂的方向，正好就是 A 的一列</b>。ICA 要算出 A，就是要找出这两条臂的方向。</p>
+<p>为什么找到臂的方向就能拆开？把 x = A s 按 A 的两列写开：</p>
+<div class="eq"><i>x</i> = <i>s</i><sub>眨眼</sub> <span class="vec"><span>100</span><span>25</span></span> + <i>s</i><sub>α</sub> <span class="vec"><span>15</span><span>30</span></span></div>
+<p>也就是说，每个点都是从两条臂的交点出发，沿眨眼臂的方向走 s<sub>眨眼</sub> 份、再沿 α 臂的方向走 s<sub>α</sub> 份到达的。知道了两条臂的方向，就能把每个点反过来读成"沿眨眼臂走了多少、沿 α 臂走了多少"，这两个数就是这一时刻的眨眼强度和 α 强度。每个时刻都这样读，就得到了纯眨眼和纯 α 波两条时间曲线，这就是"拆开"。拆开以后，把眨眼那条设成 0 再拼回去，电极数据里就没有眨眼了。</p>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">图 1 · 两个成分混成两个电极的信号（模拟数据）。拖动时间，看散点图上的点怎么跟着走</div>
+  <svg class="plot" id="f1t" viewBox="0 0 680 186" role="img" aria-label="FP2 和 Pz 两个电极随时间变化的电压"></svg>
+  <div class="ctrl">
+    <label class="v" for="f1r">时间 = <span id="f1tv"></span> s</label>
+    <input type="range" id="f1r" min="0" max="1599" step="1" value="0">
+    <button id="f1play">播放</button>
+  </div>
+  <div class="duo">
+    <svg class="plot" id="f1s" viewBox="0 0 300 250" role="img" aria-label="FP2 对 Pz 的散点图"></svg>
+    <div class="rd">
+      <div>成分：</div>
+      <div>FP2 = <span class="num" id="f1a"></span> μV</div>
+      <div>Pz = <span class="num" id="f1b"></span> μV</div>
+      <div>→ 在散点图上画一个点，横坐标是 FP2 的值，纵坐标是 Pz 的值</div>
+      <label class="chk"><input type="checkbox" id="f1arm"> 显示 A 的两列（两条"臂"的方向）</label>
+      <div class="legend"><span><i style="border-color:var(--pos)"></i>眨眼那一列</span><span><i style="border-color:var(--neg)"></i>α 波那一列</span></div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="split">
+<h3 class="pt">③ 白化：把两条臂变成互相垂直</h3>
+<div class="txt">
+<p>原始数据里，两条臂之间的夹角不是 90°（图 2 一开始约 49°）。白化分两步：</p>
+<p>第一步是转正：找出数据散得最开的方向（图 2 里的虚线），把整团数据转过去，让这个方向变成水平，这一步就是 PCA。第二步是缩放：把水平和竖直两个方向分别拉伸或压缩，让两个方向上的方差都等于 1。</p>
+<p>拖到最右边，两条臂变成互相垂直。这不是巧合：只要两个成分彼此独立，白化之后它们的方向就一定垂直（这里不展开证明）。</p>
+<p>为什么要先白化？因为白化之后，要找的未知数变少了。</p>
+<p>白化前，两条臂之间的夹角是不知道的：这里是 49°，换一份数据就不一样。所以眨眼臂的方向和 α 臂的方向只能各找各的，一共要找 2 个角度。白化后，两条臂一定互相垂直，只要找到其中一条，另一条就在它的垂直方向上，不用另外找，于是只剩 1 个角度。</p>
+<p>可以想成两根钟表指针。白化前两根指针各转各的，要调两个角度；白化后两根指针被焊成一个直角十字，转一个角度就能同时对齐两条臂。图 4 里拖的 θ 就是这个角度。</p>
+<p>30 个电极时道理一样，只是数字更大。白化前，直接求 W 要定 29 × 29 = 841 个数。白化后只剩一个旋转：29 条坐标轴里，每两条轴之间有一个转动角度，两两配对一共 29 × 28 ÷ 2 = 406 对，也就是 406 个角度，比 841 少了一半多。而且不管怎么转，数据都保持不相关、方差为 1，这两个条件不用再管。</p>
+<p>但白化不会告诉我们十字该转到哪个角度：图 2 拖到最右边时，两条臂相对坐标轴还是斜的。这要靠第 3 步。</p>
+<p>但是在讲第三步之前先把前面两步公式化表示出来：</p>
+<div class="eq"><i>z</i> = <i>D</i><sup>−1/2</sup> <i>E</i><sup>T</sup> <i>x</i></div>
+<div class="map"><table>
+  <thead><tr><th>符号</th><th>是什么</th></tr></thead>
+  <tbody>
+    <tr><td>E</td><td>各列是数据散得最开的方向，以及和它垂直的方向（协方差矩阵的特征向量）。乘 E<sup>T</sup> 就是第 1 步：转正</td></tr>
+    <tr><td>D</td><td>对角矩阵，对角线上是这几个方向上的方差（特征值）。乘 D<sup>−1/2</sup> 就是每个方向除以自己的标准差，即第 2 步：缩放</td></tr>
+    <tr><td>z</td><td>白化后的数据：各分量互不相关，方差都是 1</td></tr>
+  </tbody>
+</table></div>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">图 2 · 白化的两步。拖动滑块，看两条臂之间的夹角怎么变成 90°</div>
+  <svg class="plot" id="f2" viewBox="0 0 640 330" role="img" aria-label="白化过程中的散点图"></svg>
+  <div class="ctrl">
+    <label class="v" for="f2r">进度</label>
+    <input type="range" id="f2r" min="0" max="100" step="1" value="0">
+  </div>
+  <div class="stages"><span>原始数据</span><span>第 1 步：转正</span><span>第 2 步：缩放</span></div>
+  <div class="rd">
+    <div>现在：<b id="f2st"></b></div>
+    <div>两条臂之间的夹角 = <span class="num" id="f2ang"></span></div>
+  </div>
+  <div class="legend"><span><i style="border-color:var(--pos)"></i>眨眼臂</span><span><i style="border-color:var(--neg)"></i>α 臂</span><span><i style="border-color:var(--muted);border-top-style:dashed"></i>数据散得最开的方向</span></div>
+</div>
+</div>
+</div>
+
+<div class="split">
+<h3 class="pt">④ 旋转：怎么知道十字转到哪个角度</h3>
+<div class="txt">
+<p>先回到目标：我们要把每个时刻的电极数据拆成"眨眼多少、α 波多少"，也就是算出 s，这样才能把眨眼那部分去掉。原理 ② 说过，知道了两条臂的方向就能拆。白化之后两条臂互相垂直，只差一个角度 θ 不知道：把一个直角十字转到和两条臂对齐，就找到了两条臂的方向。</p>
+<p>但算法看不到臂，它判断十字有没有对齐，要靠信号的直方图形状，所以先认识三种直方图。</p>
+<p>直方图是把一个信号所有时刻的取值统计起来：横轴是取值，柱子越高，说明这个取值出现得越多。</p>
+<p>纯眨眼的信号大部分时间是 0，偶尔很大，所以直方图是 0 附近一个尖峰，加一条长尾巴。纯 α 波是正弦，取值多半落在两头，所以直方图两边高、中间低。两者混在一起，直方图就更接近钟形，也就是正态分布。</p>
+<p>可以这样试：先点三个按钮，看上面说的三种形状。眨眼、α 波各一半时，k 从纯眨眼的 25.7 降到 6.1，已经比纯眨眼更接近钟形，但还看得出两个来源的影子。再勾选"再混入 4 个别的独立信号"，直方图基本贴着虚线的钟形，k 降到 0.7。混进去的独立信号越多，越接近钟形。</p>
+<p>混得越多越接近钟形，这是中心极限定理的直觉。反过来说，一个信号的直方图越不像钟形，它就越可能是没被混过的"纯"信号。下面就用这一点来找 θ。</p>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">图 3 · 不同信号的直方图（模拟数据，40 秒）。点按钮或拖动滑块，看三种形状</div>
+  <div class="seg" role="group" aria-label="预设">
+    <button data-w="100">纯眨眼</button><button data-w="0">纯 α 波</button><button data-w="50">眨眼、α 波各一半</button>
+  </div>
+  <div class="ctrl">
+    <label class="v" for="f4r">眨眼占 <span id="f4wv"></span>%</label>
+    <input type="range" id="f4r" min="0" max="100" step="1" value="100">
+  </div>
+  <label class="chk"><input type="checkbox" id="f4more"> 再混入 4 个别的独立信号（一共 6 个，各占一份）</label>
+  <svg class="plot" id="f4h" viewBox="0 0 680 198" role="img" aria-label="输出信号的直方图，和同样方差的正态分布对比"></svg>
+  <div class="sub">这个信号前 8 秒的时间曲线</div>
+  <svg class="plot" id="f4t" viewBox="0 0 680 70" role="img" aria-label="输出信号的时间曲线"></svg>
+  <div class="rd">
+    <div>现在的信号：<b id="f4what"></b></div>
+    <div>峰度 k = <span class="num" id="f4k"></span>（正态分布 = 0，离 0 越远越不像钟形）</div>
+  </div>
+  <div class="legend"><span><b style="background:var(--sig)"></b>直方图</span><span><i style="border-color:var(--muted);border-top-style:dashed"></i>同样方差的正态分布（钟形）</span><span>柱高按开方缩放，长尾巴才看得见</span></div>
+</div>
+</div>
+</div>
+
+<div class="split">
+<h3 class="pt">④ 续：转动十字，找最不像钟形的角度</h3>
+<div class="txt">
+<p>转十字要找的，就是和两条臂对齐的那个角度。对齐以后，十字的两条线就是两条臂的方向，每个点在十字上的两个坐标，就是原理 ② 里说的"沿眨眼臂走了多少、沿 α 臂走了多少"，也就是拆出来的 s。</p>
+<p>具体怎么读：把右边图里的直角十字当成一套新的坐标轴：紫色实线是 y₁ 轴，绿色虚线是 y₂ 轴。每个点在这套坐标轴上有两个坐标，就是这一时刻的两个输出 y₁、y₂。图里的大圆点是 2.90 秒这一刻（正在眨眼），两条细虚线标出了它的 y₁ 和 y₂。</p>
+<p>每个时刻都这样读一遍，再把所有时刻的 y₁ 按时间连起来，就得到一条新的时间曲线（右边下方紫色那条），y₂ 也一样（绿色那条）。所以十字每转到一个角度，就给出一种拆分结果：两条新的时间曲线。</p>
+<p>拖动 θ，看这两条时间曲线。十字和两条臂对齐时，一条是纯眨眼，一条是纯 α 波，这就拆对了；没对齐时，两条曲线里都混着眨眼和 α 波。</p>
+<p>我们能看出拆没拆对，是因为知道真实的眨眼和 α 波长什么样，但算法不知道。它只能看 y₁、y₂ 自己的直方图：拆对时两个输出都是纯信号，直方图一个是尖峰加长尾巴，一个两边高；拆错时两个输出都是混合，直方图更像钟形。所以<b>让 y₁、y₂ 最不像钟形的角度，就是拆对的角度</b>。</p>
+<p>"不像钟形"的程度用峰度来量：</p>
+<div class="eq"><i>k</i>(<i>y</i>) = mean(<i>y</i><sup>4</sup>) − 3　，　<i>J</i> = |<i>k</i>(<i>y</i><sub>1</sub>)| + |<i>k</i>(<i>y</i><sub>2</sub>)|</div>
+<div class="map"><table>
+  <thead><tr><th>符号</th><th>是什么</th></tr></thead>
+  <tbody>
+    <tr><td>y</td><td>某个输出在所有时刻的取值，已经调成平均 0、方差 1</td></tr>
+    <tr><td>mean(y⁴)</td><td>每个取值的四次方再取平均。偶尔出现的大值，四次方后会变得特别大，所以尾巴越长，这个平均越大。正态分布时它正好等于 3</td></tr>
+    <tr><td>k(y)</td><td>峰度。正态分布 = 0；眨眼这种长尾巴 → 很大的正数；正弦 → −1.5</td></tr>
+    <tr><td>J</td><td>两个输出峰度的绝对值之和。J 越大，两个输出越不像钟形。第 3 步就是在找 J 最大的角度</td></tr>
+  </tbody>
+</table></div>
+<p>右上角的曲线就是 J 随 θ 的变化。拖到 J 的最高点，十字和两条臂对齐，y₁、y₂ 的直方图一个是长尾巴、一个两边高，和真实成分的相似度接近 1。拖到最低点，十字正好在两条臂中间，两个输出都是混合，直方图更像钟形。点"让算法自己找"，就是第 3 步里的梯度上升：从随机角度出发，每次往 J 变大的方向转一点，直到最高点。</p>
+<p class="note">MNE 里 <code>method</code> 可选 <code>fastica</code>、<code>infomax</code>、<code>picard</code>。它们用的公式不同，有的不用峰度，但思路相同：找让输出最不像正态分布的旋转。</p>
+</div>
+<div class="side">
+<div class="fig">
+  <div class="fig-cap">图 4 · 在白化后的数据上转动直角十字。拖动 θ，或者让算法自己找</div>
+  <div class="duo">
+    <div><div class="sub">白化后的散点图和十字</div><svg class="plot" id="f3s" viewBox="0 0 300 280" role="img" aria-label="白化后的散点图和直角十字"></svg></div>
+    <div><div class="sub">J 随角度 θ 的变化</div><svg class="plot" id="f3j" viewBox="0 0 300 280" role="img" aria-label="J 随角度的曲线"></svg></div>
+  </div>
+  <div class="ctrl">
+    <label class="v" for="f3r">θ = <span id="f3tv"></span>°</label>
+    <input type="range" id="f3r" min="0" max="179" step="1" value="10">
+    <button id="f3go">从随机角度出发，让算法自己找</button>
+  </div>
+  <div class="duo">
+    <div><div class="sub" style="color:var(--sig)">输出 y₁ 的直方图和时间曲线　k = <span class="num" id="f3k1"></span></div><svg class="plot" id="f3h1" viewBox="0 0 300 150" role="img" aria-label="输出 1 的直方图和时间曲线"></svg><div class="note" id="f3c1"></div></div>
+    <div><div class="sub" style="color:var(--ok)">输出 y₂ 的直方图和时间曲线　k = <span class="num" id="f3k2"></span></div><svg class="plot" id="f3h2" viewBox="0 0 300 150" role="img" aria-label="输出 2 的直方图和时间曲线"></svg><div class="note" id="f3c2"></div></div>
+  </div>
+  <div class="legend"><span><b style="background:var(--ink)"></b>大圆点：2.90 秒这一刻（正在眨眼），细虚线标出它的 y₁、y₂</span></div>
+  <div class="note" id="f3v"></div>
+</div>
+</div>
+</div>
+
+<h3 class="pt">⑤ 为什么不直接拿眼电通道当眼电成分</h3>
+<p>眼电通道本身也是混合信号：VEOG 下电极和 FP2 都离额叶很近，也记到了大脑活动。如果直接按眼电通道的波形从各电极里减（这叫回归法，是 ICA 出现之前常用的办法），会把这部分大脑信号一起减掉。ICA 计算时不用眼电通道，只在第 4 步用它们来认成分。</p>
+
+<h3 class="pt">⑥ 成分的编号和正负号没有意义</h3>
+<p>图 4 里 θ 每转 90°，J 完全一样，只是两个输出互换了位置。也就是说，ICA 不知道成分的顺序，所以每次跑完，眼电是第几个成分都要重新认。</p>
+<p>另外，把某个成分乘 −1，同时把 A 的对应列也乘 −1，x 完全不变。所以成分的正负号是任意的，MNE 里的地形图可能红蓝颠倒，这不影响结果。</p>
+
+<h2><span class="step">4</span>为什么值得做</h2>
+<p>Luck 实验室用 15 个数据集测过伪迹处理对 SVM decoding 的影响 [2]。ICA 校正没有稳定地提高准确率，但他们仍然建议用 ICA 校正眨眼和眼动：如果看脸和看车时眼睛的动法不一样，眼电本身就能帮分类器分开两类，让准确率被虚假地抬高。校正掉眼电，才能更确定分类器用的是大脑信号。</p>
+
+<h2><span class="step">§</span>参考文献</h2>
+<ol style="margin:0;padding-left:1.4em;font-size:15px;display:flex;flex-direction:column;gap:6px">
+  <li>Kappenman, E. S., Farrens, J. L., Zhang, W., Stewart, A. X., &amp; Luck, S. J. (2021). ERP CORE: An open resource for human event-related potential research. <i>NeuroImage</i>, 225, 117465. <a href="https://doi.org/10.1016/j.neuroimage.2020.117465" style="color:var(--sig)">doi</a></li>
+  <li>Zhang, G., &amp; Luck, S. J. (2025). Assessing the impact of artifact correction and artifact rejection on the performance of SVM-based decoding of EEG signals. 预印本. <a href="https://www.biorxiv.org/content/10.1101/2025.02.22.639684.full.pdf" style="color:var(--sig)">bioRxiv</a></li>
+</ol>
+</main>
+
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg",$=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function tx(p,x,y,s,a){const e=el("text",Object.assign({x,y},a||{}),p);e.textContent=s;return e;}
+let sd=20261101;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647;};
+const randn=()=>{const u=Math.max(rnd(),1e-9),v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+const mean=a=>a.reduce((p,c)=>p+c,0)/a.length;
+
+/* ---------- shared simulated data ---------- */
+const N=1600,fs=200,T=N/fs;
+let bl=new Array(N).fill(0);
+[1.1,2.9,4.3,5.6,7.2].forEach(c=>{const amp=0.88+0.24*rnd();for(let i=0;i<N;i++)bl[i]+=amp*Math.exp(-0.5*((i/fs-c)/0.06)**2);});
+let al=Array.from({length:N},(_,i)=>Math.sin(2*Math.PI*10*i/fs+0.4*Math.sin(i/fs*1.7)));
+const mb=mean(bl);bl=bl.map(v=>v-mb);const ma=mean(al);al=al.map(v=>v-ma);
+{const c=mean(al.map((v,i)=>v*bl[i]))/mean(bl.map(v=>v*v));al=al.map((v,i)=>v-c*bl[i]);} // make the two sources exactly uncorrelated
+const A=[[100,15],[25,30]];             // rows: FP2, Pz ; cols: blink, alpha
+const nz=[0,1].map(()=>Array.from({length:N},()=>0.8*randn()));
+const XX=[0,1].map(r=>bl.map((v,i)=>A[r][0]*v+A[r][1]*al[i]+nz[r][i]));
+const cen=[0,1].map(r=>-(A[r][0]*mb+A[r][1]*0));  // point where the arms meet (sources at 0)
+const X=XX;const sub=[];for(let i=0;i<N;i+=2)sub.push(i);
+
+/* PCA whitening */
+const c11=mean(X[0].map(v=>v*v)),c22=mean(X[1].map(v=>v*v)),c12=mean(X[0].map((v,i)=>v*X[1][i]));
+const hh=(c11+c22)/2,dd=Math.sqrt(((c11-c22)/2)**2+c12*c12),l1=hh+dd,l2=hh-dd;
+let e1=[c12,l1-c11];{const n=Math.hypot(...e1);e1=e1.map(v=>v/n);if(e1[0]<0)e1=e1.map(v=>-v);}
+const phi=Math.atan2(e1[1],e1[0]);
+const ang=(u,v)=>{let a=Math.abs(Math.atan2(u[0]*v[1]-u[1]*v[0],u[0]*v[0]+u[1]*v[1]))*180/Math.PI;return a>90?180-a:a;};
+// linear map at whitening progress p (0..1); display units stay µV-like (axis 1 unscaled)
+function Mp(p){
+  const th=p<=0.5?-phi*(p/0.5):-phi, mu=p<=0.5?0:(p-0.5)/0.5;
+  const c=Math.cos(th),s=Math.sin(th),sx=1,sy=1+mu*(Math.sqrt(l1/l2)-1);
+  return [[sx*c,-sx*s],[sy*s,sy*c]];
+}
+const ap=(M,v)=>[M[0][0]*v[0]+M[0][1]*v[1],M[1][0]*v[0]+M[1][1]*v[1]];
+const colA=j=>[A[0][j],A[1][j]];
+
+/* ---------- figure 1: time curves <-> scatter ---------- */
+(()=>{
+  const X=[0,1].map(r=>XX[r].map(v=>v-cen[r])),c1=[0,0]; // show voltages so that "no blink" sits around 0
+  const st=$("f1t"),L=46,R=672,Xt=i=>L+i/(N-1)*(R-L),k=0.62;
+  const lanes=[{name:"FP2",y0:92,d:X[0]},{name:"Pz",y0:152,d:X[1]}];
+  lanes.forEach(ln=>{
+    el("line",{x1:L,x2:R,y1:ln.y0,y2:ln.y0,stroke:"var(--grid)"},st);
+    tx(st,6,ln.y0+4,ln.name,{style:"fill:var(--ink)"});
+    el("polyline",{points:ln.d.map((v,i)=>Xt(i)+","+(ln.y0-v*k)).join(" "),fill:"none",stroke:"var(--raw)","stroke-width":1},st);
+  });
+  el("line",{x1:L-4,x2:L-4,y1:92,y2:92-100*k,stroke:"var(--muted)"},st);tx(st,L-8,92-50*k+4,"100 μV",{"text-anchor":"end",style:"font-size:9px"});
+  [0,2,4,6,8].forEach(s=>tx(st,L+s/T*(R-L),182,s+" s",{"text-anchor":s===8?"end":s===0?"start":"middle"}));
+  const ph=el("line",{y1:6,y2:170,stroke:"var(--sig)","stroke-width":1.5},st);
+  const pd=lanes.map(()=>el("circle",{r:4,fill:"var(--sig)"},st));
+
+  const ss=$("f1s"),SL=40,SR=292,ST=8,SB=214,xr=[-30,125],sc=(SR-SL)/(xr[1]-xr[0]),yr=[-48,-48+(SB-ST)/sc];
+  const XS=v=>SL+(v-xr[0])*sc,YS=v=>SB-(v-yr[0])*sc;
+  el("line",{x1:SL,x2:SR,y1:YS(0),y2:YS(0),stroke:"var(--grid)"},ss);el("line",{x1:XS(0),x2:XS(0),y1:ST,y2:SB,stroke:"var(--grid)"},ss);
+  [0,50,100].forEach(v=>tx(ss,XS(v),SB+14,v,{"text-anchor":"middle"}));[-40,0,40].forEach(v=>tx(ss,SL-4,YS(v)+4,v,{"text-anchor":"end"}));
+  tx(ss,SR,SB+30,"FP2 (μV) →",{"text-anchor":"end"});tx(ss,SL+4,ST+10,"↑ Pz (μV)",{"text-anchor":"start"});
+  sub.forEach(i=>el("circle",{cx:XS(X[0][i]),cy:YS(X[1][i]),r:1.5,fill:"var(--raw)","fill-opacity":.45},ss));
+  const arms=el("g",{style:"display:none"},ss);
+  const a1=colA(0),a2=colA(1);
+  el("line",{x1:XS(c1[0]),y1:YS(c1[1]),x2:XS(c1[0]+a1[0]*1.1),y2:YS(c1[1]+a1[1]*1.1),stroke:"var(--pos)","stroke-width":2.5},arms);
+  el("line",{x1:XS(c1[0]-a2[0]*1.3),y1:YS(c1[1]-a2[1]*1.3),x2:XS(c1[0]+a2[0]*1.3),y2:YS(c1[1]+a2[1]*1.3),stroke:"var(--neg)","stroke-width":2.5},arms);
+  const gx=el("line",{stroke:"var(--sig)","stroke-dasharray":"3 3"},ss),gy=el("line",{stroke:"var(--sig)","stroke-dasharray":"3 3"},ss);
+  const dot=el("circle",{r:5.5,fill:"var(--sig)",stroke:"var(--surface)","stroke-width":1.5},ss);
+  $("f1arm").addEventListener("change",e=>arms.style.display=e.target.checked?"":"none");
+  function upd(i){
+    ph.setAttribute("x1",Xt(i));ph.setAttribute("x2",Xt(i));
+    lanes.forEach((ln,j)=>{pd[j].setAttribute("cx",Xt(i));pd[j].setAttribute("cy",ln.y0-ln.d[i]*k);});
+    const px=XS(X[0][i]),py=YS(X[1][i]);
+    dot.setAttribute("cx",px);dot.setAttribute("cy",py);
+    gx.setAttribute("x1",px);gx.setAttribute("x2",px);gx.setAttribute("y1",py);gx.setAttribute("y2",SB);
+    gy.setAttribute("x1",SL);gy.setAttribute("x2",px);gy.setAttribute("y1",py);gy.setAttribute("y2",py);
+    $("f1tv").textContent=(i/fs).toFixed(2);$("f1a").textContent=Math.round(X[0][i])||0;$("f1b").textContent=Math.round(X[1][i])||0;
+  }
+  const r=$("f1r");r.addEventListener("input",()=>{stop();upd(+r.value);});
+  let raf=null;const btn=$("f1play");
+  function stop(){if(raf){cancelAnimationFrame(raf);raf=null;btn.textContent="播放";}}
+  btn.addEventListener("click",()=>{
+    if(raf){stop();return;}
+    btn.textContent="暂停";let i=+r.value>=N-2?0:+r.value;
+    const step=()=>{i+=1;if(i>=N){stop();return;}r.value=i;upd(i);raf=requestAnimationFrame(step);};
+    raf=requestAnimationFrame(step);
+  });
+  upd(0);
+})();
+
+/* ---------- figure 2: whitening animation ---------- */
+(()=>{
+  const s=$("f2"),W=640,H=300,cx=W/2,cy=H/2;
+  // fixed scale that fits every stage
+  let mx=1,my=1;[0,.25,.5,.75,1].forEach(p=>{const M=Mp(p);sub.forEach(i=>{const q=ap(M,[X[0][i],X[1][i]]);mx=Math.max(mx,Math.abs(q[0]));my=Math.max(my,Math.abs(q[1]));});});
+  const sc=Math.min((W/2-20)/mx,(H/2-14)/my);
+  el("line",{x1:10,x2:W-10,y1:cy,y2:cy,stroke:"var(--grid)"},s);el("line",{x1:cx,x2:cx,y1:6,y2:H-6,stroke:"var(--grid)"},s);
+  const pts=sub.map(()=>el("circle",{r:1.5,fill:"var(--raw)","fill-opacity":.45},s));
+  const pc=el("line",{stroke:"var(--muted)","stroke-dasharray":"5 4","stroke-width":1.3},s);
+  const arm1=el("line",{stroke:"var(--pos)","stroke-width":2.5},s),arm2=el("line",{stroke:"var(--neg)","stroke-width":2.5},s);
+  const S=q=>[cx+q[0]*sc,cy-q[1]*sc];
+  function upd(p){
+    const M=Mp(p);
+    sub.forEach((i,j)=>{const q=S(ap(M,[X[0][i],X[1][i]]));pts[j].setAttribute("cx",q[0]);pts[j].setAttribute("cy",q[1]);});
+    const d=ap(M,e1),n=Math.hypot(...d),u=[d[0]/n*400,d[1]/n*400],a=S(u),b=S([-u[0],-u[1]]);
+    pc.setAttribute("x1",a[0]);pc.setAttribute("y1",a[1]);pc.setAttribute("x2",b[0]);pc.setAttribute("y2",b[1]);
+    const c=ap(M,cen),v1=ap(M,colA(0)),v2=ap(M,colA(1));
+    let q1=S(c),q2=S([c[0]+v1[0]*1.1,c[1]+v1[1]*1.1]);arm1.setAttribute("x1",q1[0]);arm1.setAttribute("y1",q1[1]);arm1.setAttribute("x2",q2[0]);arm1.setAttribute("y2",q2[1]);
+    q1=S([c[0]-v2[0]*1.3,c[1]-v2[1]*1.3]);q2=S([c[0]+v2[0]*1.3,c[1]+v2[1]*1.3]);arm2.setAttribute("x1",q1[0]);arm2.setAttribute("y1",q1[1]);arm2.setAttribute("x2",q2[0]);arm2.setAttribute("y2",q2[1]);
+    $("f2ang").textContent=ang(v1,v2).toFixed(0)+"°";
+    $("f2st").textContent=p===0?"原始数据":p<0.5?"第 1 步，转正中":p===0.5?"第 1 步完成：散得最开的方向已经水平":p<1?"第 2 步，缩放中":"白化完成";
+  }
+  const r=$("f2r");r.addEventListener("input",()=>upd(r.value/100));upd(0);
+})();
+
+/* ---------- figure 3: rotation ---------- */
+(()=>{
+  const Mw=Mp(1),k1=Math.sqrt(l1);                      // whitened, in units of 1 sd
+  const Z=[0,1].map(r=>X[0].map((v,i)=>(Mw[r][0]*v+Mw[r][1]*X[1][i])/k1));
+  const kurt=y=>{const v=mean(y.map(a=>a*a));return mean(y.map(a=>a**4))/(v*v)-3;};
+  const corr=(a,c)=>Math.abs(mean(a.map((v,i)=>v*c[i]))/Math.sqrt(mean(a.map(v=>v*v))*mean(c.map(v=>v*v))));
+  const proj=th=>{const r=th*Math.PI/180,c=Math.cos(r),s=Math.sin(r);return[Z[0].map((v,i)=>c*v+s*Z[1][i]),Z[0].map((v,i)=>-s*v+c*Z[1][i])];};
+  const Jc=[];for(let d=0;d<180;d++){const[y1,y2]=proj(d);Jc.push(Math.abs(kurt(y1))+Math.abs(kurt(y2)));}
+  const Jmax=Math.max(...Jc),Jmin=Math.min(...Jc);
+  const Jat=th=>{th=((th%180)+180)%180;const i=Math.floor(th),f=th-i;return Jc[i]*(1-f)+Jc[(i+1)%180]*f;};
+  // scatter frame
+  const ss=$("f3s"),cx=150,cy=140;let m=0;sub.forEach(i=>m=Math.max(m,Math.abs(Z[0][i]),Math.abs(Z[1][i])));const sc=128/m;
+  const S=q=>[cx+q[0]*sc,cy-q[1]*sc];
+  el("line",{x1:10,x2:290,y1:cy,y2:cy,stroke:"var(--grid)"},ss);el("line",{x1:cx,x2:cx,y1:6,y2:274,stroke:"var(--grid)"},ss);
+  const c0=ap(Mw,cen).map(v=>v/k1),w1=ap(Mw,colA(0)).map(v=>v/k1),w2=ap(Mw,colA(1)).map(v=>v/k1);
+  let q1=S(c0),q2=S([c0[0]+w1[0]*1.1,c0[1]+w1[1]*1.1]);el("line",{x1:q1[0],y1:q1[1],x2:q2[0],y2:q2[1],stroke:"var(--pos)","stroke-width":5,"stroke-opacity":.28,"stroke-linecap":"round"},ss);
+  q1=S([c0[0]-w2[0]*1.3,c0[1]-w2[1]*1.3]);q2=S([c0[0]+w2[0]*1.3,c0[1]+w2[1]*1.3]);el("line",{x1:q1[0],y1:q1[1],x2:q2[0],y2:q2[1],stroke:"var(--neg)","stroke-width":5,"stroke-opacity":.28,"stroke-linecap":"round"},ss);
+  sub.forEach(i=>{const q=S([Z[0][i],Z[1][i]]);el("circle",{cx:q[0],cy:q[1],r:1.5,fill:"var(--raw)","fill-opacity":.45},ss);});
+  const cross=el("g",{},ss);
+  // J frame
+  const sj=$("f3j"),L=34,R=292,TT=12,B=236,XJ=d=>L+d/180*(R-L),YJ=v=>B-(v-Jmin)/(Jmax-Jmin)*(B-TT)*0.94;
+  [0,45,90,135,180].forEach(d=>{el("line",{x1:XJ(d),x2:XJ(d),y1:TT,y2:B,stroke:"var(--grid)"},sj);tx(sj,XJ(d),B+16,d+"°",{"text-anchor":d===180?"end":d===0?"start":"middle"});});
+  el("polyline",{points:Jc.map((v,d)=>XJ(d)+","+YJ(v)).join(" ")+" "+XJ(180)+","+YJ(Jc[0]),fill:"none",stroke:"var(--ink)","stroke-width":1.6},sj);
+  tx(sj,L-6,YJ(Jmax)+4,"高",{"text-anchor":"end"});tx(sj,L-6,YJ(Jmin)+4,"低",{"text-anchor":"end"});tx(sj,R,B+32,"θ →",{"text-anchor":"end"});
+  const jl=el("line",{y1:TT,y2:B,stroke:"var(--sig)","stroke-dasharray":"3 3"},sj),jd=el("circle",{r:5,fill:"var(--sig)"},sj);
+  function hist(id,y,col){
+    const sv=$(id);sv.innerHTML="";const lo=-6,hi=6,nb=48,cnt=new Array(nb).fill(0);
+    y.forEach(v=>{const k=Math.floor((v-lo)/(hi-lo)*nb);if(k>=0&&k<nb)cnt[k]++;});
+    const mc=Math.max(...cnt),bw=290/nb;
+    cnt.forEach((c,k)=>{const h=Math.sqrt(c/mc)*72;if(h>0)el("rect",{x:5+k*bw,y:80-h,width:bw-1,height:h,fill:col,"fill-opacity":.75},sv);});
+    el("line",{x1:5,x2:295,y1:80,y2:80,stroke:"var(--line)"},sv);tx(sv,150,92,"0",{"text-anchor":"middle"});
+    const my=Math.max(...y.map(Math.abs))||1;
+    el("polyline",{points:y.map((v,i)=>(5+i/(N-1)*290)+","+(124-v/my*22)).join(" "),fill:"none",stroke:col,"stroke-width":1},sv);
+    el("circle",{cx:5+580/(N-1)*290,cy:124-y[580]/my*22,r:4,fill:"var(--ink)",stroke:"var(--surface)","stroke-width":1.2},sv);
+  }
+  function draw(th){
+    $("f3tv").textContent=Math.round(th);
+    cross.innerHTML="";const r=th*Math.PI/180;
+    [[r,"var(--sig)","y₁",""],[r+Math.PI/2,"var(--ok)","y₂","6 4"]].forEach(([a,col,lab,da])=>{
+      const u=[Math.cos(a),Math.sin(a)],p=S([u[0]*m*1.05,u[1]*m*1.05]),q=S([-u[0]*m*1.05,-u[1]*m*1.05]);
+      el("line",{x1:q[0],y1:q[1],x2:p[0],y2:p[1],stroke:col,"stroke-width":2,"stroke-dasharray":da},cross);
+      const t=S([u[0]*m*0.92,u[1]*m*0.92]);tx(cross,t[0]+8,t[1]-6,lab,{style:"fill:"+col+";font-size:13px"});
+    });
+    {const i=580,c=Math.cos(r),s=Math.sin(r),p=[Z[0][i],Z[1][i]],u1=c*p[0]+s*p[1],u2=-s*p[0]+c*p[1];
+     const P=S(p),F1=S([u1*c,u1*s]),F2=S([-u2*s,u2*c]);
+     el("line",{x1:P[0],y1:P[1],x2:F1[0],y2:F1[1],stroke:"var(--sig)","stroke-dasharray":"2 3","stroke-width":1.3},cross);
+     el("line",{x1:P[0],y1:P[1],x2:F2[0],y2:F2[1],stroke:"var(--ok)","stroke-dasharray":"2 3","stroke-width":1.3},cross);
+     el("circle",{cx:F1[0],cy:F1[1],r:3.5,fill:"var(--sig)"},cross);el("circle",{cx:F2[0],cy:F2[1],r:3.5,fill:"var(--ok)"},cross);
+     el("circle",{cx:P[0],cy:P[1],r:6,fill:"var(--ink)",stroke:"var(--surface)","stroke-width":1.5},cross);}
+    jl.setAttribute("x1",XJ(th));jl.setAttribute("x2",XJ(th));jd.setAttribute("cx",XJ(th));jd.setAttribute("cy",YJ(Jat(th)));
+    const [y1,y2]=proj(th);hist("f3h1",y1,"var(--sig)");hist("f3h2",y2,"var(--ok)");
+    $("f3k1").textContent=kurt(y1).toFixed(2);$("f3k2").textContent=kurt(y2).toFixed(2);
+    const r1=[corr(y1,bl),corr(y1,al)],r2=[corr(y2,bl),corr(y2,al)];
+    $("f3c1").textContent=`和眨眼的相似度 |r| = ${r1[0].toFixed(2)}，和 α 波 = ${r1[1].toFixed(2)}`;
+    $("f3c2").textContent=`和眨眼的相似度 |r| = ${r2[0].toFixed(2)}，和 α 波 = ${r2[1].toFixed(2)}`;
+    const a=Math.min(r1[0],r2[1])>0.97,b=Math.min(r1[1],r2[0])>0.97;
+    $("f3v").innerHTML=a?"<b style='color:var(--ok)'>对齐了：</b>y₁ 是眨眼，y₂ 是 α 波。":b?"<b style='color:var(--ok)'>对齐了：</b>y₁ 是 α 波，y₂ 是眨眼。":"还没对齐：两个输出都是眨眼和 α 波的混合。";
+  }
+  const sl=$("f3r");let anim=null;
+  sl.addEventListener("input",()=>{if(anim){clearTimeout(anim);anim=null;}draw(+sl.value);});
+  $("f3go").addEventListener("click",()=>{
+    if(anim)clearTimeout(anim);let th=Math.random()*180,n=0;
+    const step=()=>{const g=(Jat(th+1)-Jat(th-1))/2/(Jmax-Jmin);th+=Math.max(-4,Math.min(4,g*120));th=((th%180)+180)%180;
+      sl.value=Math.round(th);draw(th);n++;if(Math.abs(g)>0.001&&n<150)anim=setTimeout(step,45);else anim=null;};
+    sl.value=Math.round(th);draw(th);anim=setTimeout(step,350);
+  });
+  draw(10);
+})();
+
+/* ---------- figure 3: histogram shapes ---------- */
+(()=>{
+  let sd2=777;const r2=()=>{sd2=(sd2*16807)%2147483647;return sd2/2147483647;};
+  const M=8000,fs2=200;
+  const std=a=>{const m=mean(a),v=Math.sqrt(mean(a.map(x=>(x-m)**2)));return a.map(x=>(x-m)/v);};
+  const bumps=(rate,w)=>{const a=new Array(M).fill(0);let t=0.5+r2()*rate;while(t<M/fs2-0.3){const amp=0.85+0.3*r2();const c=t*fs2,lo=Math.max(0,Math.floor(c-5*w)),hi=Math.min(M,Math.ceil(c+5*w));for(let i=lo;i<hi;i++)a[i]+=amp*Math.exp(-0.5*((i-c)/w)**2);t+=rate*(0.6+0.8*r2());}return a;};
+  const blink=std(bumps(4,12));
+  const alpha=std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*10*i/fs2+0.4*Math.sin(i/fs2*1.7))));
+  const others=[
+    std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*6.3*i/fs2+1.1))),
+    std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*17.7*i/fs2+0.3*Math.sin(i/fs2*0.9)))),
+    std(Array.from({length:M},(_,i)=>Math.sin(2*Math.PI*23.1*i/fs2+2.0))),
+    std(Array.from({length:M},()=>r2()-0.5)),
+  ];
+  const lo=-4,hi=7,nb=55,bw=(hi-lo)/nb;
+  const hs=$("f4h"),L=10,R=670,B=160,H=148,Xh=v=>L+(v-lo)/(hi-lo)*(R-L);
+  const ts=$("f4t");
+  const phi0=x=>Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+  const kurt=y=>{const v=mean(y.map(a=>a*a));return mean(y.map(a=>a**4))/(v*v)-3;};
+  const sl=$("f4r"),more=$("f4more"),btns=[...document.querySelectorAll(".seg button")];
+  function draw(){
+    const w=+sl.value/100,mix=more.checked;
+    sl.disabled=mix;btns.forEach(b=>b.setAttribute("aria-pressed",String(!mix&&+b.dataset.w===+sl.value)));
+    $("f4wv").textContent=sl.value;
+    const y=mix?blink.map((v,i)=>(v+alpha[i]+others[0][i]+others[1][i]+others[2][i]+others[3][i])/Math.sqrt(6))
+               :blink.map((v,i)=>Math.sqrt(w)*v+Math.sqrt(1-w)*alpha[i]);
+    const cnt=new Array(nb).fill(0);y.forEach(v=>{const k=Math.floor((v-lo)/bw);if(k>=0&&k<nb)cnt[k]++;});
+    const dens=cnt.map(c=>c/(M*bw)),pmax=Math.max(...dens,phi0(0));
+    hs.innerHTML="";
+    dens.forEach((d,k)=>{const h=Math.sqrt(d/pmax)*H;if(h>0.3)el("rect",{x:Xh(lo+k*bw)+0.5,y:B-h,width:(R-L)/nb-1,height:h,fill:"var(--sig)","fill-opacity":.75},hs);});
+    const pts=[];for(let x=lo;x<=hi;x+=0.05)pts.push(Xh(x)+","+(B-Math.sqrt(phi0(x)/pmax)*H));
+    el("polyline",{points:pts.join(" "),fill:"none",stroke:"var(--muted)","stroke-width":1.6,"stroke-dasharray":"5 4"},hs);
+    el("line",{x1:L,x2:R,y1:B,y2:B,stroke:"var(--line)"},hs);
+    [-4,-2,0,2,4,6].forEach(v=>tx(hs,Xh(v),B+16,v,{"text-anchor":"middle"}));
+    tx(hs,R,B+30,"取值（单位：标准差）→",{"text-anchor":"end"});
+    ts.innerHTML="";const seg=y.slice(0,1600),my=Math.max(4,...seg.map(Math.abs));
+    el("line",{x1:L,x2:R,y1:35,y2:35,stroke:"var(--grid)"},ts);
+    el("polyline",{points:seg.map((v,i)=>(L+i/1599*(R-L))+","+(35-v/my*30)).join(" "),fill:"none",stroke:"var(--sig)","stroke-width":1},ts);
+    $("f4k").textContent=kurt(y).toFixed(2);
+    $("f4what").textContent=mix?"6 个独立信号各占一份混在一起":w===1?"纯眨眼":w===0?"纯 α 波":`眨眼占 ${sl.value}%、α 波占 ${100-sl.value}% 的混合`;
+  }
+  sl.addEventListener("input",draw);more.addEventListener("change",draw);
+  btns.forEach(b=>b.addEventListener("click",()=>{more.checked=false;sl.value=b.dataset.w;draw();}));
+  draw();
+})();
+})();
+</script>
+
+</body></html>

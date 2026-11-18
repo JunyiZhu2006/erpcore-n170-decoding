@@ -1,0 +1,259 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>双极眼电 EOG</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Noto+Sans+SC:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same notebook column as the SVM and filter pages; each idea = short text then a live figure */
+:root{
+  --bg:#f2f5f6; --surface:#ffffff; --ink:#15212a; --muted:#566673; --line:#d2dbe1; --grid:#e5ebee;
+  --sig:#6a4dd6;      /* bipolar result / accent */
+  --left:#1c8cc6;     /* left / lower electrode */
+  --right:#d9820d;    /* right / upper electrode */
+  --cut:#c2385a;      /* reject */
+  --ok:#1f8a5b;
+  --raw:#8b98a3;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",ui-sans-serif,system-ui,sans-serif;
+  --f-math:"STIX Two Text","Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10161a; --surface:#172027; --ink:#e2eaef; --muted:#97a7b3; --line:#2a3741; --grid:#202b33;
+  --sig:#a592ff; --left:#4cb8ec; --right:#f2a840; --cut:#f0718d; --ok:#4fc28b; --raw:#6c7b87; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10161a; --surface:#172027; --ink:#e2eaef; --muted:#97a7b3; --line:#2a3741; --grid:#202b33;
+  --sig:#a592ff; --left:#4cb8ec; --right:#f2a840; --cut:#f0718d; --ok:#4fc28b; --raw:#6c7b87; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.8;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,5.4vw,44px);line-height:1.12;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:24px;line-height:1.3;margin:20px 0 0;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .step{font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--sig);border:1px solid var(--sig);border-radius:4px;padding:0 6px;flex:none}
+p{margin:0;max-width:66ch}
+.lede{font-size:18px;color:var(--muted)}
+.eq{font-family:var(--f-math);font-size:21px;text-align:center;padding:14px 10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto;white-space:nowrap}
+.eq i{font-style:italic}
+.map{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500;text-transform:uppercase}
+.callout{border-left:3px solid var(--sig);padding:4px 0 4px 14px;border-radius:0}
+.note{font-size:14.5px;color:var(--muted)}
+code{font-family:var(--f-mono);font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.fig-cap{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+.fig-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:center}
+.fig-row>*{min-width:0}
+svg.plot{width:100%;height:auto;display:block;max-width:100%}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.ctrl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ctrl label{font-size:14px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.ctrl label span{font-family:var(--f-mono);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--sig)}
+input[type=range]:focus-visible{outline:2px solid var(--sig);outline-offset:3px}
+.readout{display:flex;flex-direction:column;gap:6px;font-size:14.5px}
+.kv{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding-bottom:3px}
+.kv span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chip{display:inline-block;font-size:14px;font-weight:500;padding:3px 10px;border-radius:999px;border:1px solid currentColor;line-height:1.5}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:0;border-top:2.5px solid;vertical-align:middle;margin-right:6px}
+.btn{font:inherit;font-size:14px;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--sig);outline-offset:2px}
+@media (max-width:620px){.fig-row{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">ERP decoding 练习 · 预处理笔记</div>
+  <h1>双极眼电 EOG</h1>
+  <p class="lede">预处理里有一步：把 3 个眼电通道标成 EOG，再算出双极眼电 HEOG = 左 − 右、VEOG = VEOG_lower − FP2。这一页说明眼电从哪来、为什么要两个电极相减，以及算出来以后拿来做什么。三张图都可以拖动。</p>
+</header>
+
+<h2><span class="step">1</span>眼电通道在哪、记录什么</h2>
+<p>ERP CORE 的 N170 数据有 33 个通道：30 个头皮 EEG 通道，加 3 个眼电（EOG）通道 [1]。眼电通道不是用来研究大脑的，而是专门记录眼睛的动作。</p>
+<div class="map"><table>
+  <thead><tr><th>通道</th><th>位置</th><th>记录什么</th></tr></thead>
+  <tbody>
+    <tr><td>HEOG_left / HEOG_right</td><td>左右眼的外眼角旁</td><td>水平眼动（往左看、往右看）</td></tr>
+    <tr><td>VEOG_lower</td><td>右眼下方</td><td>眨眼、垂直眼动。和眼睛上方的头皮电极 FP2 配对使用</td></tr>
+    <tr><td>FP2</td><td>额头上，右眼上方</td><td>本身是头皮 EEG 通道，不是专门的眼电电极。因为正好在眼睛上方，会被借来和 VEOG_lower 配对，算双极 VEOG</td></tr>
+  </tbody>
+</table></div>
+<p>需要它们，是因为眨眼和眼动产生的电信号比 EEG 大得多，会扩散到头皮上的电极，尤其是前额。</p>
+
+<h2><span class="step">2</span>眼睛本身就是一个偶极子</h2>
+<p>眼球前面的角膜相对后面的视网膜带正电，所以每只眼睛都像一个小电池，正极朝前。眼睛一转，正极就跟着转向某一侧，周围电极上的电压随之改变。</p>
+
+<div class="fig">
+  <div class="fig-cap">图 1 · 眼睛往左右看时，两侧电极的电压</div>
+  <div class="fig-row">
+    <svg class="plot" id="g1" viewBox="0 0 340 285" role="img" aria-label="眼球偶极子随注视方向转动，两侧电极电压变化"></svg>
+    <div class="readout">
+      <div class="ctrl"><label for="gz">注视方向 <span id="gzv"></span></label><input type="range" id="gz" min="-30" max="30" step="1" value="-15"></div>
+      <div class="kv"><span style="color:var(--left)">左侧电极（只算眼动）</span><span id="r1l"></span></div>
+      <div class="kv"><span style="color:var(--right)">右侧电极（只算眼动）</span><span id="r1r"></span></div>
+      <div class="kv"><span style="color:var(--sig)">HEOG = 左 − 右</span><span id="r1h"></span></div>
+      <p class="note">数值是示意，只表示方向和相对大小。</p>
+    </div>
+  </div>
+</div>
+<p>往左看时角膜（正极）靠近左边的电极：左边变正、右边变负。往右看正好反过来。两侧变化<b>方向相反</b>，所以左减右之后，眼动信号变成单侧的两倍，而且 HEOG 的正负直接告诉你眼睛往哪边转。</p>
+<p>眨眼时眼皮滑过角膜，眼睛上方和下方的电极电压也是反方向变化（上方变正、下方变负），所以 VEOG 用"眼下 − 眼上"，眨眼会变成一个很大的负向尖峰。</p>
+
+<h2><span class="step">3</span>为什么要两个电极相减</h2>
+<p>单个眼电电极记录的是它相对于记录参考点的电压，里面除了眼动，还混着大脑活动和各种共同的噪声（比如 60 Hz 交流电、慢漂移）。这些成分在眼睛两侧的电极上几乎一样（毕竟两个眼睛是基本对称的）。设左右两个电极分别记录到：</p>
+<div class="eq">左 = <i>e</i> + <i>c</i>　　　右 = −<i>e</i> + <i>c</i>　　　左 − 右 = 2<i>e</i></div>
+<p class="note">e 是眼动在电极上造成的电压，c 是两侧共有的成分（大脑活动、共同噪声）。因为我们假设被试没有斗鸡眼，所以两个眼睛的眼动电压是一致的。相减后 c 消掉，e 变成两倍。</p>
+
+<div class="fig">
+  <div class="fig-cap">图 2 · 一段 2 秒的模拟眼电：往左看、眨眼、往右看</div>
+  <div class="ctrls">
+    <div class="ctrl"><label for="cn">共同噪声的大小 <span id="cnv"></span></label><input type="range" id="cn" min="0" max="3" step="0.1" value="1.5"></div>
+  </div>
+  <svg class="plot" id="g2" viewBox="0 0 680 420" role="img" aria-label="单个眼电电极和双极眼电的模拟时间序列"></svg>
+  <div class="legend"><span><i style="border-color:var(--left)"></i>左侧 / 眼下电极</span><span><i style="border-color:var(--right)"></i>右侧 / 眼上电极（FP2）</span><span><i style="border-color:var(--sig)"></i>双极：两者相减</span></div>
+</div>
+<p>把共同噪声调大，单个电极的波形很快就乱得看不出眼动；双极眼电几乎不受影响，0.5 秒的左看、1.0 秒的眨眼、1.4 秒的右看都清清楚楚。注意眨眼在 HEOG 上几乎看不到，在 VEOG 上很大；左右看则相反。两个双极眼电分工明确：</p>
+<div class="map"><table>
+  <thead><tr><th>双极眼电</th><th>怎么算</th><th>主要看到</th><th>方向</th></tr></thead>
+  <tbody>
+    <tr><td>HEOG</td><td>HEOG_left − HEOG_right</td><td>左右眼动</td><td>往左看为正，往右看为负</td></tr>
+    <tr><td>VEOG</td><td>VEOG_lower − FP2</td><td>眨眼、上下眼动</td><td>眨眼是很大的负向尖峰</td></tr>
+  </tbody>
+</table></div>
+
+<h2><span class="step">4</span>算出来以后拿来做什么</h2>
+<p><b>主要用途是剔除 trial。</b>如果刺激出现的那一刻被试正在眨眼或转眼睛，他可能根本没看清图片，眼电本身也会污染这段 EEG，这个 trial 就要删掉。ERP CORE 官方也是这么做的 [1]。做法很简单：在刺激呈现的时间段里，看双极 HEOG 和 VEOG 有没有超过阈值。</p>
+
+<div class="fig">
+  <div class="fig-cap">图 3 · 按双极 VEOG 剔除 trial（模拟 10 个 trial）</div>
+  <div class="ctrls">
+    <div class="ctrl"><label for="th">阈值 <span id="thv"></span></label><input type="range" id="th" min="20" max="200" step="5" value="80"></div>
+  </div>
+  <svg class="plot" id="g3" viewBox="0 0 680 400" role="img" aria-label="10 个 trial 的 VEOG，刺激呈现期间超过阈值的被标为剔除"></svg>
+  <div class="readout"><div class="kv"><span>保留 / 剔除</span><span id="r3"></span></div></div>
+  <button class="btn" id="re" type="button">换一组模拟 trial</button>
+</div>
+<p>阴影是刺激呈现的时间段（示意），红色虚线是阈值。在阴影里超过阈值的 trial 会被删掉；眨眼发生在阴影外面的 trial 保留。阈值调得太低会把正常的 trial 也删掉，太高又会放过真正的眨眼。ERP CORE 官方的阈值是逐个被试看数据定的，在这次练习中我们为了简化，用的是统一的阈值。</p>
+
+<h2><span class="step">5</span>为什么一定要在数据预处理的时候注意标记EOG类型？</h2>
+<p>数据读进 MNE 时，33 个通道默认都会被当成 EEG。把 3 个眼电通道标成 <code>eog</code> 之后，MNE 就知道它们不是大脑信号：做平均参考时，它们不会被算进所有电极的平均里；画头皮地形图时，它们不会出现；做 decoding 时，它们也不会被当成特征。</p>
+<p>最后一点对 decoding 特别重要。被试看脸和看车时，眼睛的动法可能不一样，比如看脸时更常去看图里眼睛的位置。如果把眼电也放进特征里，分类器很可能靠眼动就把两类分开了，准确率看起来很高，其实和大脑没有关系。所以我们做 decoding 时只用 30 个头皮 EEG 通道。</p>
+
+<h2><span class="step">§</span>参考文献</h2>
+<ol style="margin:0;padding-left:1.4em;font-size:15px">
+  <li>Kappenman, E. S., Farrens, J. L., Zhang, W., Stewart, A. X., &amp; Luck, S. J. (2021). ERP CORE: An open resource for human event-related potential research. <i>NeuroImage</i>, 225, 117465. <a href="https://doi.org/10.1016/j.neuroimage.2020.117465" style="color:var(--sig)">doi</a></li>
+</ol>
+</main>
+
+<script>
+(()=>{
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function tx(p,x,y,s,a){const e=el("text",Object.assign({x,y},a||{}),p);e.textContent=s;return e;}
+let s0=4242;const rnd=()=>{s0=(s0*16807)%2147483647;return s0/2147483647;};
+const randn=()=>{const u=Math.max(rnd(),1e-9),v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+
+/* ---------- Figure 1: eye dipole ---------- */
+(()=>{
+  const svg=$("g1"),sl=$("gz");
+  function draw(){
+    const a=+sl.value,rad=a*Math.PI/180;svg.innerHTML="";
+    const cx=170,cy=160,R=62;
+    tx(svg,cx,16,"从头顶往下看一只眼睛，↑ 是前方（屏幕）",{"text-anchor":"middle"});
+    el("circle",{cx,cy,r:R,fill:"var(--bg)",stroke:"var(--muted)","stroke-width":1.5},svg);
+    // gaze direction: 0 = straight up (front). negative = left
+    const dx=Math.sin(rad),dy=-Math.cos(rad);
+    const px=cx+dx*R,py=cy+dy*R,nx=cx-dx*R*0.75,ny=cy-dy*R*0.75;
+    el("path",{d:`M${cx+dx*R*0.62-dy*20},${cy+dy*R*0.62+dx*20} Q${cx+dx*R*1.18},${cy+dy*R*1.18} ${cx+dx*R*0.62+dy*20},${cy+dy*R*0.62-dx*20}`,fill:"none",stroke:"var(--right)","stroke-width":2},svg);
+    el("line",{x1:nx,y1:ny,x2:px,y2:py,stroke:"var(--ink)","stroke-width":1,"stroke-dasharray":"3 3"},svg);
+    tx(svg,px+dx*14,py+dy*14+4,"+",{"text-anchor":"middle",style:"fill:var(--ink);font-size:18px;font-weight:700"});
+    tx(svg,nx-dx*12,ny-dy*12+4,"−",{"text-anchor":"middle",style:"fill:var(--ink);font-size:18px;font-weight:700"});
+    tx(svg,px+dx*30,py+dy*30-4,"角膜",{"text-anchor":"middle"});
+    tx(svg,nx-dx*30,ny-dy*30+12,"视网膜",{"text-anchor":"middle"});
+    const L=Math.round(-a*3),Rv=-L,lx=cx-R-34,rx=cx+R+34;
+    const col=v=>v>0?"var(--ok)":v<0?"var(--cut)":"var(--muted)";
+    [[lx,L,"左侧电极","var(--left)"],[rx,Rv,"右侧电极","var(--right)"]].forEach(([x,v,lab,c])=>{
+      el("circle",{cx:x,cy,r:11,fill:c},svg);
+      tx(svg,x,cy+30,lab,{"text-anchor":"middle"});
+      tx(svg,x,cy-20,(v>0?"+":"")+v,{"text-anchor":"middle",style:`fill:${col(v)};font-size:13px;font-weight:600`});
+    });
+    tx(svg,cx,276,a<0?"往左看":a>0?"往右看":"看正前方",{"text-anchor":"middle",style:"fill:var(--ink);font-size:13px"});
+    $("gzv").textContent=a<0?`左 ${-a}°`:a>0?`右 ${a}°`:"正前方";
+    $("r1l").textContent=(L>0?"+":"")+L;$("r1r").textContent=(Rv>0?"+":"")+Rv;$("r1h").textContent=((L-Rv)>0?"+":"")+(L-Rv);
+  }
+  sl.addEventListener("input",draw);draw();
+})();
+
+/* ---------- Figure 2: bipolar cancels common noise ---------- */
+(()=>{
+  const fs=250,N=2*fs,t=[];for(let i=0;i<N;i++)t.push(i/fs);
+  const step=(x,t0,w)=>1/(1+Math.exp(-(x-t0)/w));
+  const gaze=t.map(x=>40*(step(x,0.5,0.01)-step(x,1.4,0.01))-40*step(x,1.4,0.01)*0); // left from 0.5 to 1.4, then right
+  const gz=t.map(x=>x<0.5?0:x<1.4?40*step(x,0.5,0.008):40-80*step(x,1.4,0.008));
+  const blink=t.map(x=>120*Math.exp(-0.5*((x-1.0)/0.045)**2));
+  const brain=t.map((x,i)=>6*Math.sin(2*Math.PI*10*x)+3*randn());
+  const line60=t.map(x=>Math.sin(2*Math.PI*60*x));
+  const n1=t.map(()=>2*randn()),n2=t.map(()=>2*randn()),n3=t.map(()=>2*randn()),n4=t.map(()=>2*randn());
+  const drift=t.map(x=>Math.sin(2*Math.PI*0.4*x+1));
+  const sl=$("cn");
+  function lane(svg,y0,h,lab){el("line",{x1:120,x2:665,y1:y0,y2:y0,stroke:"var(--line)"},svg);tx(svg,8,y0-h/2+12,lab);}
+  function pl(svg,ys,y0,scale,c,w){el("polyline",{points:ys.map((v,i)=>(120+i/(N-1)*545)+","+(y0-v*scale)).join(" "),fill:"none",stroke:c,"stroke-width":w||1.2},svg);}
+  function draw(){
+    const k=+sl.value;$("cnv").textContent=k.toFixed(1)+" ×";
+    const common=t.map((x,i)=>k*(25*line60[i]+40*drift[i])+brain[i]);
+    const hl=gz.map((v,i)=>v+common[i]+0.08*blink[i]+n1[i]);
+    const hr=gz.map((v,i)=>-v+common[i]+0.08*blink[i]+n2[i]);
+    const vlo=gz.map((v,i)=>-0.45*blink[i]+common[i]+n3[i]);
+    const fp2=gz.map((v,i)=>0.55*blink[i]+common[i]+n4[i]);
+    const svg=$("g2");svg.innerHTML="";
+    const sc=0.38;
+    tx(svg,120,14,"单个电极（相对记录参考）");
+    lane(svg,70,90,"HEOG L/R");pl(svg,hl,70,sc,"var(--left)");pl(svg,hr,70,sc,"var(--right)");
+    lane(svg,165,90,"VEOG / FP2");pl(svg,vlo,165,sc,"var(--left)");pl(svg,fp2,165,sc,"var(--right)");
+    tx(svg,120,232,"双极：相减之后");
+    lane(svg,285,90,"HEOG 左−右");pl(svg,hl.map((v,i)=>v-hr[i]),285,sc,"var(--sig)",1.8);
+    lane(svg,375,90,"VEOG 下−上");pl(svg,vlo.map((v,i)=>v-fp2[i]),375,sc*0.55,"var(--sig)",1.8);
+    [[0.5,"往左看"],[1.0,"眨眼"],[1.4,"往右看"]].forEach(([x,s])=>{const X=120+x/2*545;el("line",{x1:X,x2:X,y1:240,y2:410,stroke:"var(--muted)","stroke-dasharray":"2 3"},svg);tx(svg,X+4,250,s,{style:"fill:var(--ink)"});});
+    [0,0.5,1,1.5,2].forEach(x=>tx(svg,120+x/2*545,415,x+" s",{"text-anchor":x===2?"end":"middle"}));
+  }
+  sl.addEventListener("input",draw);draw();
+})();
+
+/* ---------- Figure 3: trial rejection ---------- */
+(()=>{
+  const n=10,T0=-200,T1=800,stimA=0,stimB=300;let trials=[];
+  function gen(){trials=[];for(let j=0;j<n;j++){const has=rnd()<0.55,bt=T0+rnd()*(T1-T0),amp=-(90+rnd()*110);
+      const ys=[];for(let tt=T0;tt<=T1;tt+=4)ys.push(4*randn()+(has?amp*Math.exp(-0.5*((tt-bt)/45)**2):0));trials.push({ys});}}
+  const sl=$("th");
+  function draw(){
+    const th=+sl.value;$("thv").textContent=th+" μV";
+    const svg=$("g3");svg.innerHTML="";
+    const L=70,R=665,X=tt=>L+(tt-T0)/(T1-T0)*(R-L),rowH=36,top=22;
+    el("rect",{x:X(stimA),y:top-6,width:X(stimB)-X(stimA),height:n*rowH+4,fill:"var(--sig)","fill-opacity":.09},svg);
+    tx(svg,X(stimA)+4,14,"刺激呈现期间（示意）",{style:"fill:var(--sig)"});
+    let keep=0;
+    trials.forEach((tr,j)=>{
+      const y0=top+j*rowH+rowH/2,sc=rowH/2/140;
+      let bad=false;tr.ys.forEach((v,i)=>{const tt=T0+i*4;if(tt>=stimA&&tt<=stimB&&Math.abs(v)>th)bad=true;});
+      if(!bad)keep++;
+      el("line",{x1:L,x2:R,y1:y0,y2:y0,stroke:"var(--grid)"},svg);
+      el("line",{x1:L,x2:R,y1:y0+th*sc,y2:y0+th*sc,stroke:"var(--cut)","stroke-dasharray":"3 3","stroke-width":.8,opacity:.7},svg);
+      el("polyline",{points:tr.ys.map((v,i)=>X(T0+i*4)+","+(y0-v*sc)).join(" "),fill:"none",stroke:bad?"var(--cut)":"var(--ink)","stroke-width":1.3,opacity:bad?1:.75},svg);
+      tx(svg,8,y0+4,`trial ${j+1}`,{style:`fill:${bad?"var(--cut)":"var(--muted)"}`});
+      if(bad)tx(svg,R,y0-6,"剔除",{"text-anchor":"end",style:"fill:var(--cut);font-weight:600"});
+    });
+    [-200,0,200,400,600,800].forEach(v=>tx(svg,X(v),top+n*rowH+14,v+" ms",{"text-anchor":v===800?"end":"middle"}));
+    $("r3").textContent=`${keep} / ${n-keep}`;
+  }
+  gen();sl.addEventListener("input",draw);$("re").addEventListener("click",()=>{gen();draw();});draw();
+})();
+})();
+</script>
+
+</body></html>
